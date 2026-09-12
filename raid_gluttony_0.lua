@@ -1,6 +1,7 @@
 local missions = require("missions")
 local mission = require(missions.RAID_GLUTTONY_0)
 local lib = require("lib.mission_lib")
+local berth_combat = require("leviathan.berth_combat")(mission)
 
 -- Two authored states of one slice set: 0 playable, 1 the landing cutscene.
 -- Only a state change builds the cutscene's type-6 component.
@@ -42,52 +43,6 @@ local CINE_SQUADS = lib.list(
     mission.Squad.SQ_BERTH_7_CINE
 )
 
--- One type-2 combatant per squad, at the next slot index.
-local GUARD_COMBATANTS = lib.list(
-    mission.Slot.SQ_BERTH_0_GUARD_CELL_1,
-    mission.Slot.SQ_BERTH_1_GUARD_CELL_1,
-    mission.Slot.SQ_BERTH_2_GUARD_CELL_1,
-    mission.Slot.SQ_BERTH_3_GUARD_CELL_1,
-    mission.Slot.SQ_BERTH_4_GUARD_CELL_1,
-    mission.Slot.SQ_BERTH_5_GUARD_CELL_1,
-    mission.Slot.SQ_BERTH_6_GUARD_CELL_1,
-    mission.Slot.SQ_BERTH_7_GUARD_CELL_1
-)
-
-local CINE_COMBATANTS = lib.list(
-    mission.Slot.SQ_BERTH_0_CINE_CELL_1,
-    mission.Slot.SQ_BERTH_1_CINE_CELL_1,
-    mission.Slot.SQ_BERTH_2_CINE_CELL_1,
-    mission.Slot.SQ_BERTH_3_CINE_CELL_1,
-    mission.Slot.SQ_BERTH_4_CINE_CELL_1,
-    mission.Slot.SQ_BERTH_5_CINE_CELL_1,
-    mission.Slot.SQ_BERTH_6_CINE_CELL_1,
-    mission.Slot.SQ_BERTH_7_CINE_CELL_1
-)
-
--- TODO: activate from initialize_berth. Held back until doubled placements are ruled out.
-local INTRO_SCENES = lib.list(
-    mission.Scene.SCENE_BERTH_GUARD_INTRO_0,
-    mission.Scene.SCENE_BERTH_GUARD_INTRO_1,
-    mission.Scene.SCENE_BERTH_GUARD_INTRO_2,
-    mission.Scene.SCENE_BERTH_GUARD_INTRO_3,
-    mission.Scene.SCENE_BERTH_GUARD_INTRO_4,
-    mission.Scene.SCENE_BERTH_GUARD_INTRO_5,
-    mission.Scene.SCENE_BERTH_GUARD_INTRO_6,
-    mission.Scene.SCENE_BERTH_GUARD_INTRO_7
-)
-
-local CINE_SCENES = lib.list(
-    mission.Scene.SCENE_BERTH_GUARD_CINE_0,
-    mission.Scene.SCENE_BERTH_GUARD_CINE_1,
-    mission.Scene.SCENE_BERTH_GUARD_CINE_2,
-    mission.Scene.SCENE_BERTH_GUARD_CINE_3,
-    mission.Scene.SCENE_BERTH_GUARD_CINE_4,
-    mission.Scene.SCENE_BERTH_GUARD_CINE_5,
-    mission.Scene.SCENE_BERTH_GUARD_CINE_6,
-    mission.Scene.SCENE_BERTH_GUARD_CINE_7
-)
-
 local ACTIVE_OBJECTS = lib.list(
     mission.Slot.O_WATERFALL_LEVER_0,
     mission.Slot.O_WATERFALL_LEVER_1,
@@ -123,43 +78,14 @@ local CLOSED_DEVICES = lib.list(
     mission.Slot.D_SEWER_LEVER_5
 )
 
--- TODO: the combatants take this program and never run it. Four sleeps prove delivery only.
-local function run_guard_atoms(context)
-    for _, slot in ipairs(GUARD_COMBATANTS) do
-        context:slot(slot):run_atoms{
-            generation = 1,
-            atoms = {
-                {kind = "sleep", seconds = 2.0},
-                {kind = "sleep", seconds = 2.0},
-                {kind = "sleep", seconds = 2.0},
-                {kind = "sleep", seconds = 2.0},
-            },
-        }
-    end
-end
-
-local function bind_all(context, combatants)
-    for _, slot in ipairs(combatants) do
-        context:slot(slot):bind_combatant_to_squad{}
-    end
-end
-
 local function place_berth_squads(context)
-    -- The host must own the policy before a squad makes its actors.
-    for _, squad in ipairs(GUARD_SQUADS) do
-        context:squad(squad):actor_command{
-            command = mission.ActorCommand.SET_FACTION,
-            value = mission.Faction.NONE,
-        }
-    end
-    -- A combatant binds only while its actor handle is unset. Bind before placing.
-    bind_all(context, GUARD_COMBATANTS)
-    bind_all(context, CINE_COMBATANTS)
-    lib.place_all(context, GUARD_SQUADS, context.sdk.squad_modes.reinforce)
-    lib.place_all(context, CINE_SQUADS, context.sdk.squad_modes.reinforce)
+    -- The scene's spawn action needs an armed combatant and a reserved squad member.
+    berth_combat.bind(context)
+    lib.place_all(context, GUARD_SQUADS, context.sdk.squad_modes.reserve)
+    lib.place_all(context, CINE_SQUADS, context.sdk.squad_modes.reserve)
 end
 
-local function initialize_berth(context)
+local function initialize_berth(context, state)
     lib.activate_objects(context, ACTIVE_OBJECTS)
     for _, slot in ipairs(CLOSED_DEVICES) do
         context:slot(slot):transition{
@@ -168,6 +94,7 @@ local function initialize_berth(context)
         }
     end
     place_berth_squads(context)
+    berth_combat.start_scenes(context, state)
     -- The type-31 trigger holds this generation until its type-60 occupancy test passes.
     context:slot(mission.Slot.PT_FRONT_DOOR):fire_trigger()
 end
@@ -191,7 +118,7 @@ local function enter_playable(context, state)
         return
     end
     context:set_variable(BERTH_KEY, true)
-    initialize_berth(context)
+    initialize_berth(context, state)
     show_opening_guidance(context, state)
 end
 
@@ -250,8 +177,26 @@ return {
             and event.spawn_state == nil and event.teleport_state == nil then
             context:set_variable(PLAYING_KEY, true)
             show_opening_guidance(context, state)
-            -- The combatants attached at berth init.
-            run_guard_atoms(context)
+        end
+    end,
+    on_event_squad_state = function(context, state, event)
+        if state:variable(BERTH_KEY) then
+            berth_combat.on_squad_state(context, state, event)
+        end
+    end,
+    on_event_squad_provoked = function(context, state, event)
+        if state:variable(BERTH_KEY) then
+            berth_combat.on_squad_provoked(context, state, event)
+        end
+    end,
+    on_event_damage_state = function(context, state, event)
+        if state:variable(BERTH_KEY) then
+            berth_combat.on_damage_state(context, state, event)
+        end
+    end,
+    on_event_entity_died = function(context, state, event)
+        if state:variable(BERTH_KEY) then
+            berth_combat.on_entity_died(context, state, event)
         end
     end,
     on_event_cinematic_terminated = function(context, state, event)
