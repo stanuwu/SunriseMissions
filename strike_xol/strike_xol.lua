@@ -12,8 +12,9 @@
 -- WHAT WORKS, AND THE ONE THING THAT DOES NOT
 -- ---------------------------------------------------------------------------------------
 -- The mission plays start to finish. The open problem is Xol himself: he can be made to
--- EXIST, but nothing found so far can make him act or move. If you are picking this up, the
--- notes below are the dead ends, so you do not have to re-walk them.
+-- EXIST, and nothing found so far can make him act or move. Every request the script sends
+-- him is accepted by the host and changes nothing. If you are picking this up, the notes
+-- below are the dead ends, with the evidence, so you do not have to re-walk them.
 --
 -- WHAT IS ESTABLISHED, with evidence:
 --
@@ -24,10 +25,12 @@
 --    not hold, so that content is unreachable. The bridge burst as authored cannot play.
 --
 --  * SQ_XOL_80F76B80 (bubble 12) is the one that can be reached. squad:place{} does create
---    him -- it is the only thing that ever has -- but his squad has exactly one authored
---    anchor, at (-243.7, -945.0, 3.6), while the arena volume is x -502..-405, y -770..-675,
---    z 22.8..37.8. So he spawns ~260 units away and ~19 below the floor. That is also the
---    long-standing "he is under the map" observation.
+--    something -- but at the squad's one authored anchor, (-243.7, -945.0, 3.6), while the
+--    arena volume is x -502..-405, y -770..-675, z 22.8..37.8: ~260 units away and ~19 below
+--    the floor. AND IT IS PROBABLY NOT HIM. Under the old API an action summoned him, and
+--    binding to that actor killed him on the spot. An actor that dies when bound is live and
+--    owned; this one takes a staged binding without flinching and ignores eighteen of its own
+--    abilities. Those read as two different entities, so placement is not used any more.
 --
 --  * Moving him with atoms is closed. snap_to / face / move_to all run atom_point_parameter,
 --    which calls resolveActorAbilityTarget and raises "atom target has no such authored point
@@ -38,19 +41,59 @@
 --  * play_actor_action is now a one-atom run_atoms whose ability goes through
 --    actor_ability::resolve, which accepts only a group/request pair the exact actor owns.
 --    The pre-migration call used group = FNV-1("") = 0x811C9DC5 and action =
---    FNV-1("xol_summon") = 0x0D4730FC. Neither hash appears anywhere in this scenario's
---    catalog, so that call was never addressing anything and cannot be revived.
+--    FNV-1("xol_summon") = 0x0D4730FC, and neither hash is in the SDK's extracted catalog.
+--    That does NOT prove the old call was meaningless -- atom_ability's own comment says
+--    "raw hash tuples have no script-level meaning on this path", i.e. the path was closed
+--    deliberately, and the SDK extraction is known to be partial (1230 of 1518 behaviour
+--    programs do not parse). The old call may well have worked. It just cannot be spelled
+--    through the ability lane any more. The `sequence` lane is Type2LaneU32 and is NOT
+--    validated, so the raw hash still has one door left; the entrance sweep uses it.
 --
 --  * mission.TaskGroup lists 86 objectives with authored task groups. XOL_OBJECTIVE is not
 --    one of them (XOL_ATTACK_ADDS_OBJECTIVE is), so the combat director has no task targets
 --    for him and no assignment can path him.
 --
--- WHAT IS STILL OPEN, and where I would look next:
+--  * BINDING FIRST DOES NOT FIX IT, and this was tested properly. Confetti3's Nokris strike
+--    (SunriseMissions#3) binds the combatant to its squad and waits for that request's own
+--    effect_result before it places anything -- "The binding must commit in an earlier frame
+--    than the type-1 placement" -- and its PR says why: "Atom and ability programs need the
+--    squad-bound actor." This script does exactly that now: bind in `slam`, place in
+--    `R.effect` on the receipt. The receipt arrives (xol.bind = bound), the placement goes
+--    out, and he is every bit as inert as before. So the ordering was a real gap and it was
+--    not THE gap.
 --
---  * His eighteen authored abilities (mission.ActorAbility.SQ_XOL_XOL, all in group
---    0xAFB11A12). A bare ability takes no target, so it escapes the point-parameter check
---    that closed the movement atoms. The heartbeat fires one per tick from the bridge onward
---    and records each result in xol.ab.<n>; that sweep is the live experiment.
+--  * ALL EIGHTEEN ABILITIES ARE ACCEPTED AND DO NOTHING. The sweep ran to completion against
+--    a bound, placed body: xol.ab.1 .. xol.ab.18 all read "sent", meaning
+--    actor_ability::resolve accepted every group/request pair -- they are genuinely his -- and
+--    play_actor_action raised on none of them. He did not twitch.
+--
+-- WHERE THAT LEAVES IT. Every layer the script can reach now reports success: the binding
+-- stages, the placement stages, eighteen authored abilities resolve and dispatch, and atom
+-- programs splice onto a retained body without killing him. The actor exists, is addressable,
+-- and ignores all of it. The most economical explanation left is that his compiled behaviour
+-- program never starts -- which would make every atom and ability a no-op no matter how they
+-- are sent, and is consistent with two older observations: his behaviour configs (0x80F5CD7D,
+-- programs 898/899) extract zero channels from the generated behaviour tables, and native
+-- weapon eligibility on him always returns 0 with an empty weapon context even though the
+-- native AI does acquire and hold a target. If that is right, the remaining work is on the
+-- runtime side, not in this file.
+--
+--  * spawn = true IS ACCEPTED AND CREATES NOTHING VISIBLE. The reference says
+--    "spawn = true creates the actor from its authored source first" and that it "errors when
+--    the actor has no single authored source". It does not error on SQ_XOL_XOL -- so he HAS a
+--    single authored source and the host accepts a request to build him from it -- and nothing
+--    appears. Both the raw-hash sequence lane and the first abilities went out clean
+--    (xol.en.1..4 = sent) with no visible result.
+--
+-- WHAT IS RUNNING NOW, and what it is testing. The entrance is an ACTION again, not a
+-- placement: from the bridge the heartbeat walks twenty attempts (xol.en.now / xol.en.<n>) --
+-- the raw xol_summon hash through the unvalidated `sequence` lane, then each of his eighteen
+-- authored abilities sent with spawn = true, which "creates the actor from its authored
+-- source first". Every sweep before this one used spawn = false against an already-placed
+-- body, which is the one combination that cannot answer the question. If an actor appears and
+-- then dies when something binds it, that is the live one and it is progress, not a failure.
+--
+-- WHAT IS STILL OPEN, and where I would look next:
 --
 --  * The fight is authored as SCENES, in bubble 12, and their names describe it exactly:
 --    ARRIVE_1..4 / ARRIVE_4_TOWER / ARRIVE_FINALE, BREACH_1_3 / 1_4 / 2_3 / 2_4 / 3_1 / 3_2 /
@@ -682,6 +725,40 @@ return function(mission, on_clear)
         "KEY_D166DCDE", "KEY_D16B5A29", "KEY_D16B5A2E",
     }
 
+    local SUMMON_HASH = 0x0D4730FC
+
+    function api.entrance_step(c, s)
+        local at = (s:variable("xol.en.at") or 0) + 1
+        local total = #ABILITIES + 2
+        if at > total then
+            if s:variable("xol.en") == nil then c:set_variable("xol.en", "list exhausted") end
+            return false
+        end
+        c:set_variable("xol.en.at", at)
+        local label, ok, err, key
+        if at <= 2 then
+            local spawn = (at == 1)
+            label = at .. "/" .. total .. " raw xol_summon sequence spawn=" .. tostring(spawn)
+            ok, err = pcall(function()
+                key = api.atoms(c, "SQ_XOL_XOL",
+                    {{kind = "sequence", value = SUMMON_HASH}}, spawn)
+            end)
+        else
+            local index = at - 2
+            label = at .. "/" .. total .. " ability spawn=true " .. ABILITIES[index]
+            ok, err, key = api.ability(c, "SQ_XOL_XOL", ABILITY_GROUP, ABILITIES[index],
+                                       nil, true)
+        end
+        c:set_variable("xol.en.now", label)
+        if not ok then
+            c:set_variable("xol.en." .. at, "RAISED " .. tostring(err):sub(-40))
+        else
+            c:set_variable("xol.en." .. at, "sent")
+            if key ~= nil then c:set_variable("xol.k.en", key) end
+        end
+        return true
+    end
+
     function api.ability_step(c, s)
         local at = (s:variable("xol.ab.at") or 0) + 1
         if at > #ABILITIES then
@@ -728,8 +805,12 @@ return function(mission, on_clear)
     end
 
     function api.bind(c, name)
-        local ok, err = pcall(function() api.slot(c, name):bind_combatant_to_squad() end)
-        c:set_variable("xol.bind", ok and "armed" or ("RAISED " .. tostring(err):sub(-40)))
+        local key
+        local ok, err = pcall(function()
+            key = api.slot(c, name):bind_combatant_to_squad{}
+        end)
+        c:set_variable("xol.bind", ok and "pending" or ("RAISED " .. tostring(err):sub(-40)))
+        if ok and key ~= nil then c:set_variable("xol.k.bind", key.value) end
         return ok
     end
 
@@ -1538,7 +1619,6 @@ return function(mission)
         c:clear_variable("xol.bridge.slam.wait")
         c:cancel_timer(BRIDGE_SLAM_TIMER)
         c:set_variable("xol.bridge.region", tostring(s:variable("xol.region")))
-        pcall(function() a.place_xol(c) end)
         pcall(function() a.scene(c, "BREACH_INTRO") end)
         if SLAM_IMPACT > 0 then
             c:start_timer(BRIDGE_BREAK_TIMER, SLAM_IMPACT)
@@ -1838,8 +1918,8 @@ return function(mission)
         end
         apply_doors(c, s)
         offer_rows(c, s)
-        if s:variable("xol.bridge") and (s:variable("xol.squad.alive") or 0) > 0 then
-            pcall(function() a.ability_step(c, s) end)
+        if s:variable("xol.bridge") then
+            pcall(function() a.entrance_step(c, s) end)
         end
         local current = STAGES[stage(s)]
         if current and current.tick then pcall(function() current.tick(c, s) end) end
@@ -2108,7 +2188,7 @@ return function(mission)
     function R.effect(c, s, e)
         if e.request_key ~= nil then
             for _, tag in ipairs({"e1", "e2", "e3", "c.energy1", "c.energy2", "c.energy3",
-                                  "c.core", "place", "snap", "ab"}) do
+                                  "c.core", "place", "snap", "ab", "en"}) do
                 if s:variable("xol.k." .. tag) == e.request_key.value then
                     c:set_variable("xol.r." .. tag, tostring(e.outcome))
                     c:clear_variable("xol.k." .. tag)
