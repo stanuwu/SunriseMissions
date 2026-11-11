@@ -71,6 +71,54 @@ function lib.place_all(context, squads, mode)
     end
 end
 
+---@class Unit
+---@field squad string Squad id.
+---@field slot string|nil Squad sensor slot reporting its state.
+---@field counts integer[]|nil Explicit member counts per authored lane.
+---@field cap integer|nil Upper bound per lane applied to the authored counts.
+---@field objective string|nil Combat objective slot assigned before the placement.
+---@field task_group integer|nil Task group of that objective.
+---@field spawn_rule string|nil Spawn rule slot.
+---@field member string|nil Combatant slot bound to the squad after the placement.
+
+--- Places one unit: counts, objective, spawn rule and member binding; returns the request.
+---@param unit Unit
+---@return userdata placement Placement request; existing callers may ignore the second return.
+---@return userdata|nil assignment Objective request, when the unit has an objective.
+function lib.place_unit(context, unit, mode)
+    local squad = context:squad(unit.squad)
+    local counts = squad:counts()
+    if unit.counts ~= nil then
+        assert(#unit.counts == counts.count, "unit counts must match the authored lanes")
+        for index, value in ipairs(unit.counts) do counts:set(index, value) end
+    elseif unit.cap ~= nil then
+        local authored = squad.default_counts
+        for index = 1, counts.count do
+            if (authored[index] or 0) > unit.cap then counts:set(index, unit.cap) end
+        end
+    end
+    local assignment
+    if unit.objective ~= nil then
+        assignment = context:slot(unit.slot):assign_combat_objective{
+            objective = context:slot(unit.objective), task_group = unit.task_group,
+        }
+    end
+    local request = squad:place{counts = counts, mode = mode,
+        spawn_rule = unit.spawn_rule ~= nil and context:slot(unit.spawn_rule) or nil}
+    if unit.member ~= nil then context:slot(unit.member):bind_combatant_to_squad() end
+    return request, assignment
+end
+
+--- Retires every member of a squad with zero counts; returns the request.
+function lib.retire_squad(context, squad_id)
+    local squad = context:squad(squad_id)
+    local counts = squad:counts()
+    for index = 1, counts.count do
+        counts:set(index, 0)
+    end
+    return squad:place{counts = counts, mode = context.sdk.squad_modes.replace}
+end
+
 function lib.activate_scenes(context, scenes)
     for _, scene in ipairs(scenes) do
         context:scene(scene):activate{}

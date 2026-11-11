@@ -1,0 +1,87 @@
+-- Shared squad placement for public events; live tracking stays in the host scope.
+local lib = require("lib.mission_lib")
+
+local squads = {}
+
+-- The objective request has its own retained key beside the placement request.
+local OBJECTIVE_SUFFIX = ".o"
+
+--- Appends placement and objective keys to a retained or required request list.
+---@param keys string[] Receives placement and objective keys.
+---@param key string Placement key within the event scope.
+function squads.append_request_keys(keys, key)
+    keys[#keys + 1] = key
+    keys[#keys + 1] = key .. OBJECTIVE_SUFFIX
+end
+
+--- True when a request identity matches this unit's retained placement or objective request.
+function squads.owns_request(scope, key, request)
+    return scope:variable(key) == request.value
+        or scope:variable(key .. OBJECTIVE_SUFFIX) == request.value
+end
+
+--- Replaces a unit and retains its placement and optional objective request separately.
+---@param unit Unit
+---@param key string Placement key within the event scope.
+---@return userdata request Placement request; staging does not confirm client execution.
+function squads.place(context, scope, unit, key)
+    local request, assignment = lib.place_unit(context, unit, context.sdk.squad_modes.replace)
+    scope:set_variable(key, request.value)
+    if assignment ~= nil then
+        scope:set_variable(key .. OBJECTIVE_SUFFIX, assignment.value)
+    else
+        scope:clear_variable(key .. OBJECTIVE_SUFFIX)
+    end
+    return request
+end
+
+--- True when a generation's terminal counts cover the unit's requested nonempty population.
+---@param context table Borrowed callback context.
+---@param unit Unit Authored unit with optional counts or cap.
+---@param report table Count-only native report with spawn_generation and slot_counts.
+---@return boolean ended Whether every requested member has ended.
+function squads.counted_out(context, unit, report)
+    if report.spawn_generation == nil or report.slot_counts == nil then return false end
+    local squad = context:squad(unit.squad)
+    local expected, total = unit.counts or squad.default_counts, 0
+    for index = 1, squad.member_count do
+        local count = expected[index] or 0
+        if unit.counts == nil and unit.cap ~= nil then count = math.min(count, unit.cap) end
+        if (report.slot_counts[index] or 0) < count then return false end
+        total = total + count
+    end
+    return total > 0
+end
+
+--- Removes a squad using zero authored member counts.
+function squads.retire(context, squad)
+    lib.retire_squad(context, squad)
+end
+
+---@class SquadUnit : Unit
+---@field pods table Pod object slots the squad spawns from; empty for automatic placements.
+---@field group integer|nil Index of a shared pod group that units take turns dropping.
+
+--- Drops a unit's pods; a shared pod group is re-dropped when it is already standing.
+---@param unit SquadUnit
+---@param standing_prefix string Retained key prefix; the group index names the standing flag.
+function squads.drop(context, scope, unit, standing_prefix)
+    if #unit.pods == 0 then return end
+    if unit.group == nil then
+        context:activate_objects{slots = unit.pods, active = true}
+        return
+    end
+    local key = standing_prefix .. unit.group
+    if scope:variable(key) == true then
+        context:activate_objects{slots = unit.pods, active = false}
+    end
+    context:activate_objects{slots = unit.pods, active = true}
+    scope:set_variable(key, true)
+end
+
+--- Sends one placed actor along an authored path; the request is not tracked.
+function squads.follow_path(context, actor, path)
+    context:slot(actor):play_actor_path{path = context:slot(path)}
+end
+
+return squads
