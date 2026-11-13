@@ -33,20 +33,13 @@ function module.new(definition)
             squads.place(context, scope, unit, key .. index)
         end
 
-        --- Retires a unit when its request key says it is live.
-        local function retire(context, scope, unit, key)
-            if scope:variable(key) == nil then return end
-            squads.retire(context, unit.squad)
-            scope:clear_variable(key)
-        end
-
         --- Retires every unit a site may still hold.
         local function retire_site(context, scope, index)
             local site = sites[index]
-            retire(context, scope, site.dropship, c.DROPSHIP_KEY .. index)
-            retire(context, scope, site.crew, c.CREW_KEY .. index)
-            retire(context, scope, site.extractors, c.EXTRACTORS_KEY .. index)
-            retire(context, scope, site.captain, c.CAPTAIN_KEY .. index)
+            squads.retire_if_placed(context, scope, site.dropship, c.DROPSHIP_KEY .. index)
+            squads.retire_if_placed(context, scope, site.crew, c.CREW_KEY .. index)
+            squads.retire_if_placed(context, scope, site.extractors, c.EXTRACTORS_KEY .. index)
+            squads.retire_if_placed(context, scope, site.captain, c.CAPTAIN_KEY .. index)
         end
 
         --- Starts one site: equipment, dropship and crew; the machine follows on its timer.
@@ -104,8 +97,8 @@ function module.new(definition)
 
         --- Follows the native plate: progress updates the row, ownership completes the defense.
         local function observe_plate(context, scope, report)
-            local steps = math.floor((report.plate_progress or 0) * 100 / c.PERCENT_STEP)
-            local percent = steps * c.PERCENT_STEP
+            local percent = (report.plate_progress or 0) * c.PLATE_FULL_PERCENT
+            percent = math.floor(percent / c.PERCENT_STEP) * c.PERCENT_STEP
             if percent ~= (scope:variable(c.PERCENT_KEY) or 0) then
                 scope:set_variable(c.PERCENT_KEY, percent)
                 ev:goal(context, scope, presentation.directive.enter)
@@ -164,7 +157,7 @@ function module.new(definition)
         function hooks.goal(scope)
             if ev:heroic(scope) then
                 return {directive = definition.heroic_directive, total_seconds = c.HEROIC_SECONDS,
-                    progress = {scope:variable(c.PERCENT_KEY) or 0, 100}}
+                    progress = {scope:variable(c.PERCENT_KEY) or 0, c.PLATE_FULL_PERCENT}}
             end
             return {directive = definition.directive, total_seconds = c.EVENT_SECONDS,
                 progress = {scope:variable(c.DEFEATED_KEY) or 0, c.CREW_TOTAL}}
@@ -197,7 +190,7 @@ function module.new(definition)
         function hooks.on_stop(context, scope)
             for index = 1, last_site do retire_site(context, scope, index) end
             for index, wave in ipairs(heroic_waves) do
-                retire(context, scope, wave, c.WAVE_KEY .. index)
+                squads.retire_if_placed(context, scope, wave, c.WAVE_KEY .. index)
             end
         end
 

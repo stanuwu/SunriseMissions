@@ -46,8 +46,8 @@ c.MACHINE_SLOT = 0
 -- Reconstructed spacing of the authored heroic waves; only the plate ends the defense.
 c.HEROIC_WAVE_MS = 30000
 
--- The plate reports progress from 0 to 1; the row republishes in these whole-percent steps.
-c.PERCENT_STEP = 5
+-- The plate reports 0 to 1. Its HUD counter reaches 100 and updates every 5 percentage points.
+c.PLATE_FULL_PERCENT, c.PERCENT_STEP = 100, 5
 
 -- Cue indexes in the authored dialogue sensor, matched to their authored lines; the alert,
 -- start, first relocation, heroic and heroic success lines were seen in the reference.

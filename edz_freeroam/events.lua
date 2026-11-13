@@ -12,13 +12,14 @@ local events = {}
 -- Eight authored cover pieces surround the drill; the two sniper covers stand apart.
 local COVER_COUNT, SNIPER_COVER_COUNT = 8, 2
 -- Each wave's authored spawn rule names one pod group as its spawn points.
+local MAIN, SIDE = 1, 2
 local MAIN_PODS = {"WAVE_DROP_POD_GROUP_0", "WAVE_DROP_POD_GROUP_1", "WAVE_DROP_POD_GROUP_2"}
 local SIDE_PODS = {"WAVE_DROP_POD_SIDE_GROUP_0", "WAVE_DROP_POD_SIDE_GROUP_1",
     "WAVE_DROP_POD_SIDE_GROUP_2"}
 local WAVES = {
-    {"EASY_WAVE01_SQUAD", MAIN_PODS}, {"EASY_WAVE02_SQUAD", SIDE_PODS},
-    {"MEDIUM_WAVE01_SQUAD", SIDE_PODS}, {"MEDIUM_WAVE02_SQUAD", MAIN_PODS},
-    {"HARD_WAVE01_SQUAD", MAIN_PODS}, {"HARD_WAVE02_SQUAD", MAIN_PODS},
+    {squad = "EASY_WAVE01_SQUAD", group = MAIN}, {squad = "EASY_WAVE02_SQUAD", group = SIDE},
+    {squad = "MEDIUM_WAVE01_SQUAD", group = SIDE}, {squad = "MEDIUM_WAVE02_SQUAD", group = MAIN},
+    {squad = "HARD_WAVE01_SQUAD", group = MAIN}, {squad = "HARD_WAVE02_SQUAD", group = MAIN},
 }
 -- Heroic reinforcements share the main pods; the Valus has its own pod.
 local HEROIC_WAVES = {"HEROIC_MELEE_SQUAD", "HEROIC_HEAVY_SQUAD", "HEROIC_FODDER_SQUAD"}
@@ -55,13 +56,11 @@ local function bind_winding_cove(mission)
         return result
     end
 
-    local MAIN, SIDE = 1, 2
-    local pod_groups = {slots(MAIN_PODS), slots(SIDE_PODS)}
+    local pod_groups = {[MAIN] = slots(MAIN_PODS), [SIDE] = slots(SIDE_PODS)}
     local drill_task, heroic_task = task("DRILL_OBJECTIVE"), task("HEROIC_OBJECTIVE")
     local waves = {}
-    for _, wave in ipairs(WAVES) do
-        local group = wave[2] == MAIN_PODS and MAIN or SIDE
-        waves[#waves + 1] = unit(wave[1], pod_groups[group], group, drill_task)
+    for index, wave in ipairs(WAVES) do
+        waves[index] = unit(wave.squad, pod_groups[wave.group], wave.group, drill_task)
     end
     local heroic_waves = {}
     for _, stem in ipairs(HEROIC_WAVES) do

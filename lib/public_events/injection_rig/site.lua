@@ -15,7 +15,11 @@ local HEROIC_WAVES = {"SQ_HEROIC_OUTSIDE_GROUP_1", "SQ_HEROIC_OUTSIDE_GROUP_2", 
 -- Reference Interceptors fight during heroic; their authored rules name their own pods.
 local INTERCEPTORS = {"SQ_INTERCEPTOR_1", "SQ_INTERCEPTOR_2"}
 -- Tiers in opening order: each names its weak point and its vent controls.
-local VENTS = {{"3_TOP", "TOP"}, {"2_MID", "MID"}, {"1_BOT", "BOT"}}
+local VENTS = {
+    {weakpoint = "3_TOP", tier = "TOP"},
+    {weakpoint = "2_MID", tier = "MID"},
+    {weakpoint = "1_BOT", tier = "BOT"},
+}
 local VENT_LETTERS = {"A", "B", "C"}
 local DANGER_LIGHTS = 4
 
@@ -68,11 +72,11 @@ function site.bind(mission, ids)
     for tier, names in ipairs(VENTS) do
         local hop_ons = {}
         for _, letter in ipairs(VENT_LETTERS) do
-            hop_ons[#hop_ons + 1] = slot("HO_SPIRE_" .. names[2] .. "_" .. letter .. "_OPEN")
+            hop_ons[#hop_ons + 1] = slot("HO_SPIRE_" .. names.tier .. "_" .. letter .. "_OPEN")
         end
-        vents[tier] = {object = slot("O_CABAL_SPIRE_WEAKPOINT_" .. names[1]),
-            monitor = slot("DMG_SPIRE_WEAKPOINT_" .. names[2]), hop_ons = hop_ons,
-            destroyed = slot("HO_SPIRE_" .. names[2] .. "_DESTROYED")}
+        vents[tier] = {object = slot("O_CABAL_SPIRE_WEAKPOINT_" .. names.weakpoint),
+            monitor = slot("DMG_SPIRE_WEAKPOINT_" .. names.tier), hop_ons = hop_ons,
+            destroyed = slot("HO_SPIRE_" .. names.tier .. "_DESTROYED")}
     end
     local burn_objects = {slot("O_DAMAGE_VOLUME")}
     for index = 0, DANGER_LIGHTS - 1 do

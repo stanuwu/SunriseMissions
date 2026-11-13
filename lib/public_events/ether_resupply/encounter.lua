@@ -71,13 +71,6 @@ function module.new(definition)
             return {directive = definition.directive, total_seconds = c.EVENT_SECONDS}
         end
 
-        --- Retires a placed unit while its request is still retained.
-        local function retire(context, scope, unit, key)
-            if scope:variable(key) == nil then return end
-            squads.retire(context, unit.squad)
-            scope:clear_variable(key)
-        end
-
         --- Drops the crew beside the Prime.
         local function drop_crew(context, scope)
             for index, unit in ipairs(intro.crew) do
@@ -90,7 +83,7 @@ function module.new(definition)
         local function finish_intro(context, scope)
             context:scene(intro.communion):stop{}
             context:activate_objects{slots = {intro.beam}, active = false}
-            retire(context, scope, intro.skiff, c.SKIFF_KEY)
+            squads.retire_if_placed(context, scope, intro.skiff, c.SKIFF_KEY)
             context:slot(intro.active):play_sequence{}
         end
 
@@ -123,11 +116,11 @@ function module.new(definition)
 
         --- Retires whatever still stands: the Prime, the Skiff and the crew; the scene stops.
         function hooks.on_stop(context, scope)
-            retire(context, scope, prime, c.PRIME_KEY)
+            squads.retire_if_placed(context, scope, prime, c.PRIME_KEY)
             if intro == nil then return end
-            retire(context, scope, intro.skiff, c.SKIFF_KEY)
+            squads.retire_if_placed(context, scope, intro.skiff, c.SKIFF_KEY)
             for index, unit in ipairs(intro.crew) do
-                retire(context, scope, unit, c.CREW_KEY .. index)
+                squads.retire_if_placed(context, scope, unit, c.CREW_KEY .. index)
             end
             if scope:variable(c.INTRO_STAGE_KEY) ~= nil then
                 scope:clear_variable(c.INTRO_STAGE_KEY)

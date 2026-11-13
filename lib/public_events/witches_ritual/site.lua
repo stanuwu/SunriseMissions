@@ -15,15 +15,18 @@ local WAVE_STEMS = {
     "SQ_ACOLYTES_SIGIL_1_G_1", "SQ_ACOLYTES_SIGIL_2_G_1",
     "SQ_ACOLYTES_SIGIL_1_G_2", "SQ_ACOLYTES_SIGIL_2_G_2",
 }
--- Each plate's Knights in arrival order as {squad stem, slot stem}. The generated variants carry
--- that plate's authored spawn rule (_sr_initial_knight_n) while sharing the base squad's slot.
+-- Knights in arrival order. A suffix selects the squad's spawn rule while keeping its base slot.
 local KNIGHT_VARIANTS = {
-    {{"SQ_KNIGHT_SIGIL_1_INITIAL_NON_MAJOR_000121BD", "SQ_KNIGHT_SIGIL_1_INITIAL_NON_MAJOR"},
-        {"SQ_KNIGHT_SIGIL_1_G_1_000121B9", "SQ_KNIGHT_SIGIL_1_G_1"},
-        {"SQ_KNIGHT_SIGIL_1_G_2", "SQ_KNIGHT_SIGIL_1_G_2"}},
-    {{"SQ_KNIGHT_SIGIL_2_INITIAL_NON_MAJOR_000121BE", "SQ_KNIGHT_SIGIL_2_INITIAL_NON_MAJOR"},
-        {"SQ_KNIGHT_SIGIL_2_G_1_000121BB", "SQ_KNIGHT_SIGIL_2_G_1"},
-        {"SQ_KNIGHT_SIGIL_2_G_2", "SQ_KNIGHT_SIGIL_2_G_2"}},
+    {
+        {slot = "SQ_KNIGHT_SIGIL_1_INITIAL_NON_MAJOR", suffix = "_000121BD"},
+        {slot = "SQ_KNIGHT_SIGIL_1_G_1", suffix = "_000121B9"},
+        {slot = "SQ_KNIGHT_SIGIL_1_G_2"},
+    },
+    {
+        {slot = "SQ_KNIGHT_SIGIL_2_INITIAL_NON_MAJOR", suffix = "_000121BE"},
+        {slot = "SQ_KNIGHT_SIGIL_2_G_1", suffix = "_000121BB"},
+        {slot = "SQ_KNIGHT_SIGIL_2_G_2"},
+    },
 }
 -- Portal stems by send order once the portal opens; their authored spawn rules place them.
 local PORTAL_STEMS = {
@@ -40,15 +43,10 @@ function site.bind(mission)
     local function sensor(stem)
         return lib.one(Slot[stem .. SITE_SUFFIX], "ritual sensor " .. stem)
     end
-    local function unit(stem, name)
-        return {name = name or stem, slot = slot(stem),
-            squad = lib.one(Squad[PREFIX .. stem], "ritual squad " .. stem)}
-    end
-    --- A generated squad variant keeps its base squad's slot; the suffix names only the rule.
-    local function variant(pair)
-        local stem, base = pair[1], pair[2]
-        return {name = stem, slot = slot(base),
-            squad = lib.one(Squad[PREFIX .. stem], "ritual squad " .. stem)}
+    local function unit(stem, suffix)
+        local name = stem .. (suffix or "")
+        return {name = name, slot = slot(stem),
+            squad = lib.one(Squad[PREFIX .. name], "ritual squad " .. name)}
     end
 
     local wizards, knights, acolytes, circles, runes = {}, {}, {}, {}, {}
@@ -62,8 +60,8 @@ function site.bind(mission)
         end
         wizards[index] = unit("SQ_MEDITATION_WIZARD_" .. index)
         knights[index] = {}
-        for ordinal, pair in ipairs(KNIGHT_VARIANTS[index]) do
-            knights[index][ordinal] = variant(pair)
+        for ordinal, knight in ipairs(KNIGHT_VARIANTS[index]) do
+            knights[index][ordinal] = unit(knight.slot, knight.suffix)
         end
         acolytes[index] = unit("SQ_ACOLYTES_SIGIL_" .. index .. "_INITIAL")
         circles[index] = slot("PM_SIGIL_" .. index)
@@ -90,6 +88,10 @@ function site.bind(mission)
     rally_definition.settled = true
     rally_definition.admit_everyone = true
     local arena = lib.one(Slot["SLOT_0089" .. SITE_SUFFIX], "arena volume")
+    local wizard_directive = row("WITCHES_RITUAL_85FECB3D")
+    -- Reconstructed Sorcerer placement at a single Wizard spawn point inside the arena.
+    local sorcerer = unit("SQ_WIZARD_BOSS")
+    sorcerer.spawn_rule = slot("SR_INITIAL_WIZARD_1")
     return {
         directive_sensor = directive_sensor,
         engagement = sensor("M_ENGAGEMENT_SENSOR"),
@@ -103,8 +105,8 @@ function site.bind(mission)
         event_area = arena,
         navpoint = lib.one(Slot.LOCATION_POINT, "location point"),
         -- Authored rows: wizards counter, portal open, Sorcerer, Champion.
-        directive = row("WITCHES_RITUAL_85FECB3D"),
-        incoming = row("WITCHES_RITUAL_85FECB3D"),
+        directive = wizard_directive,
+        incoming = wizard_directive,
         portal_directive = row("WITCHES_RITUAL_D74CC554"),
         boss_directive = row("WITCHES_RITUAL_CA8DDA16"),
         heroic_directive = row("WITCHES_RITUAL"),
@@ -114,13 +116,7 @@ function site.bind(mission)
         acolytes = acolytes,
         waves = waves,
         portal_waves = portal_waves,
-        -- Reconstructed same-class single-point rule inside the arena.
-        -- This Sorcerer placement remains unverified; preserve that limit when changing it.
-        sorcerer = (function()
-            local boss = unit("SQ_WIZARD_BOSS")
-            boss.spawn_rule = slot("SR_INITIAL_WIZARD_1")
-            return boss
-        end)(),
+        sorcerer = sorcerer,
         champion = unit("SQ_DARKBLADE"),
         thralls = thralls,
         circles = circles,

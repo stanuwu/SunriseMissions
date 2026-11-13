@@ -49,10 +49,7 @@ function module.new(definition)
         --- Retires every live squad this attempt placed.
         local function retire_squads(context, scope)
             for _, unit in ipairs(units) do
-                if scope:variable(unit_key(unit)) ~= nil then
-                    squads.retire(context, unit.squad)
-                    scope:clear_variable(unit_key(unit))
-                end
+                squads.retire_if_placed(context, scope, unit, unit_key(unit))
                 scope:clear_variable(live_key(unit))
             end
         end

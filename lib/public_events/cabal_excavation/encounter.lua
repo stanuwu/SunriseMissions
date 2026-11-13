@@ -67,24 +67,13 @@ function module.new(definition)
                     scope:clear_variable(live_key(index))
                 end
             end
-            local singles = {{sniper, c.SNIPER_KEY}, {valus, c.VALUS_KEY}}
-            for _, entry in ipairs(singles) do
-                if scope:variable(entry[2]) ~= nil then
-                    squads.retire(context, entry[1].squad)
-                    scope:clear_variable(entry[2])
-                end
-            end
+            squads.retire_if_placed(context, scope, sniper, c.SNIPER_KEY)
+            squads.retire_if_placed(context, scope, valus, c.VALUS_KEY)
             for index, thresher in ipairs(threshers) do
-                if scope:variable(c.THRESHER_KEY .. index) ~= nil then
-                    squads.retire(context, thresher.squad)
-                    scope:clear_variable(c.THRESHER_KEY .. index)
-                end
+                squads.retire_if_placed(context, scope, thresher, c.THRESHER_KEY .. index)
             end
             for index, guard in ipairs(heroic_waves) do
-                if scope:variable(c.GUARD_KEY .. index) ~= nil then
-                    squads.retire(context, guard.squad)
-                    scope:clear_variable(c.GUARD_KEY .. index)
-                end
+                squads.retire_if_placed(context, scope, guard, c.GUARD_KEY .. index)
             end
             for index = 1, #definition.pod_groups do
                 scope:clear_variable(c.POD_GROUP_KEY .. index)

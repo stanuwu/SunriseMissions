@@ -188,15 +188,12 @@ function module.new(definition)
                     total_seconds = c.PURSUE_SECONDS,
                     navpoint = locations[next_location].navpoint}
             end
-            return {
-                directive = definition.directive,
-                total_seconds = location_seconds(scope),
-                -- A progress label alone does not declare the SDK's integer counter capability.
-                progress = definition.directive.counter == true
-                    and {scope:variable(c.INTEGRITY_KEY) or c.INTEGRITY_MAX, c.INTEGRITY_MAX}
-                    or nil,
-                navpoint = here(scope).navpoint,
-            }
+            local progress
+            if definition.directive.counter == true then
+                progress = {scope:variable(c.INTEGRITY_KEY) or c.INTEGRITY_MAX, c.INTEGRITY_MAX}
+            end
+            return {directive = definition.directive, total_seconds = location_seconds(scope),
+                progress = progress, navpoint = here(scope).navpoint}
         end
 
         --- The first Blight is already standing; the fight opens with the clock.

@@ -12,6 +12,7 @@ local rally = {}
 -- Every rally row shares this authored name hash and first element.
 local DIRECTIVE_HASH, DIRECTIVE_ELEMENT = 0x76B10BE7, 0
 local DIRECTIVE_BASE = "PUBLIC_EVENT_INCOMING"
+local HASHED_DIRECTIVE = string.format("%s_%08X", DIRECTIVE_BASE, DIRECTIVE_HASH)
 local MS_PER_SECOND = 1000
 -- Reconstructed countdown shown from the moment the flag appears.
 local COUNTDOWN_SECONDS = 60
@@ -45,7 +46,7 @@ Rally.__index = Rally
 
 --- Finds the countdown row of a rally sensor; generated key suffixes are not stable.
 function rally.find_directive(mission, sensor)
-    local key, ordinal = DIRECTIVE_BASE, 1
+    local key, suffix = DIRECTIVE_BASE, 1
     while true do
         local row = mission.Directive[key]
         if row == nil then return nil end
@@ -53,9 +54,10 @@ function rally.find_directive(mission, sensor)
             and row.element == DIRECTIVE_ELEMENT then
             return row
         end
-        ordinal = ordinal + 1
-        -- Generated keys run BASE, BASE_76B10BE7, BASE_76B10BE7_2, BASE_76B10BE7_3.
-        key = DIRECTIVE_BASE .. "_76B10BE7" .. (ordinal > 2 and ("_" .. (ordinal - 1)) or "")
+        -- The first duplicate has only the hash. Later duplicates append _2, _3 and so on.
+        key = HASHED_DIRECTIVE
+        if suffix > 1 then key = key .. "_" .. suffix end
+        suffix = suffix + 1
     end
 end
 

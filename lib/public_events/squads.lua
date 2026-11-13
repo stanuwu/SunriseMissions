@@ -58,6 +58,13 @@ function squads.retire(context, squad)
     lib.retire_squad(context, squad)
 end
 
+--- Retires a unit once while its placement request is retained. Clears only the placement key.
+function squads.retire_if_placed(context, scope, unit, key)
+    if scope:variable(key) == nil then return end
+    squads.retire(context, unit.squad)
+    scope:clear_variable(key)
+end
+
 ---@class SquadUnit : Unit
 ---@field pods table Pod object slots the squad spawns from; empty for automatic placements.
 ---@field group integer|nil Index of a shared pod group that units take turns dropping.

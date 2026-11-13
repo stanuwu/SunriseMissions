@@ -59,24 +59,14 @@ function module.new(definition)
         local function retire_squads(context, scope)
             for stage, stage_waves in ipairs(waves) do
                 for index, unit in ipairs(stage_waves) do
-                    if scope:variable(wave_key(stage, index)) ~= nil then
-                        squads.retire(context, unit.squad)
-                        scope:clear_variable(wave_key(stage, index))
-                    end
+                    squads.retire_if_placed(context, scope, unit, wave_key(stage, index))
                 end
             end
             for index, unit in ipairs(heroic_waves) do
-                if scope:variable(c.HEROIC_WAVE_KEY .. index) ~= nil then
-                    squads.retire(context, unit.squad)
-                    scope:clear_variable(c.HEROIC_WAVE_KEY .. index)
-                end
+                squads.retire_if_placed(context, scope, unit, c.HEROIC_WAVE_KEY .. index)
             end
-            for _, entry in ipairs({{psion, c.PSION_KEY}, {commander, c.COMMANDER_KEY}}) do
-                if scope:variable(entry[2]) ~= nil then
-                    squads.retire(context, entry[1].squad)
-                    scope:clear_variable(entry[2])
-                end
-            end
+            squads.retire_if_placed(context, scope, psion, c.PSION_KEY)
+            squads.retire_if_placed(context, scope, commander, c.COMMANDER_KEY)
         end
 
         --- Returns the Valus counter.
