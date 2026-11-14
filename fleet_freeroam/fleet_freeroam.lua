@@ -18,12 +18,8 @@ local RITUAL_SITE_SEED_OMIT = {
     mission.Slot.PF2_EVENT_MONOLITH_CORE_OBJ_NORMAL_80BF6E60,
     mission.Slot.PF2_EVENT_MONOLITH_CORE_OBJ_NORMAL_80BF71E5,
 }
--- The patrol units that stand on the Ritual ground leave while the event runs and return after
--- it, as the area clears for a public event in retail. The set is the seven units whose
--- authored anchor is inside or at the edge of the arena around the portal (-4.1, 678.6) and
--- the plates (18.9, 652.2) and (31.5, 679.2): the three interior simple squads (16 to 29 m from
--- the portal, one 8 m from plate 1) and the four Acolytes 20 m east of plate 2. The other 17
--- units of the zone stand 48 m or more from the nearest plate and stay.
+-- Hold the seven patrol squads anchored around the portal and plates until the Ritual ends.
+-- The other 17 squads belong to the surrounding patrol area.
 local RITUAL_SITE_PATROL = {
     mission.Slot.PF2_INTERIOR_SIMPLE_SQUAD_1_80BF1E7C,
     mission.Slot.PF2_INTERIOR_ALT_SIMPLE_SQUAD_2_80BF1E8F,

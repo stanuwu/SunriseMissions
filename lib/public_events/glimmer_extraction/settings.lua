@@ -1,6 +1,4 @@
--- Glimmer Extraction content parameters and reconstructed policy; state keys remain host-scoped.
--- Timings marked "reference" are read from retail recordings of this event and remain
--- reconstructed family timing policy.
+-- Glimmer Extraction encounter settings.
 local c = {}
 
 -- Retained keys preserve a running attempt across script reloads; "g" is the event prefix.
@@ -21,26 +19,22 @@ c.MACHINE_TIMER, c.RELOCATE_TIMER, c.WAVE_TIMER = "gm", "gr", "gw"
 -- A site's fight runs extractors first, then their captain; relocating waits for the next crew.
 c.STAGE_CREW, c.STAGE_CAPTAIN, c.STAGE_RELOCATING, c.STAGE_DEFEND = 1, 2, 3, 4
 
--- The directive counter reads "x of 4" at every site in the reference: three extractors and the
--- captain. Squad reports only name a cleared squad, so the counter moves in those two steps.
+-- The counter covers three extractors and one captain. Squad reports count the two groups.
 c.EXTRACTORS, c.CREW_TOTAL = 3, 4
 
--- Reference clock: 2:24 six seconds after the crew lands and again after each relocation, so
--- every site has its own deadline.
+-- Each relocation starts a fresh deadline for its extraction crew.
 c.EVENT_SECONDS = 150
--- Reference heroic clock: 2:56 four seconds after the switch.
+-- Heroic starts a separate defense clock.
 c.HEROIC_SECONDS = 180
 
--- Reference incoming timing: the alert plays with the flag still up, the ketch arrives 15 s later
--- and the event joins 8 s after that. The flag's departure time is not visible.
+-- Reconstructed intervals from the alert to the Ketch and the first crew.
 c.ALERT_AFTER_LEAVE_MS, c.KETCH_AFTER_ALERT_MS, c.START_AFTER_KETCH_MS = 2000, 15000, 8000
 
--- Reference: the next crew's clock appears 12-15 s after the "Pursue the Fallen" row.
+-- Allow the next crew to land before its timer starts.
 c.RELOCATE_MS = 13000
--- Reference: the destructible machine transmats in "a few seconds" after the other equipment.
+-- The destructible machine arrives after the other equipment.
 c.MACHINE_MS = 5000
--- The content authors four machine slots per site and the reference shows one target; which
--- slot is the live one is unrecovered, so this first authored slot is a reconstruction.
+-- Each site has four machine slots. The choice of the first slot as the target is reconstructed.
 c.MACHINE_SLOT = 0
 
 -- Reconstructed spacing of the authored heroic waves; only the plate ends the defense.
@@ -49,8 +43,7 @@ c.HEROIC_WAVE_MS = 30000
 -- The plate reports 0 to 1. Its HUD counter reaches 100 and updates every 5 percentage points.
 c.PLATE_FULL_PERCENT, c.PERCENT_STEP = 100, 5
 
--- Cue indexes in the authored dialogue sensor, matched to their authored lines; the alert,
--- start, first relocation, heroic and heroic success lines were seen in the reference.
+-- Dialogue sensor indexes follow the authored lines for relocation and defense.
 c.CUE_ALERT, c.CUE_START, c.CUE_MOVED, c.CUE_MOVED_AGAIN = 0, 1, 2, 3
 c.CUE_HEROIC, c.CUE_FAILED, c.CUE_SUCCESS = 4, 5, 6
 c.CUE_HEROIC_SUCCESS, c.CUE_HEROIC_FAILED = 8, 9

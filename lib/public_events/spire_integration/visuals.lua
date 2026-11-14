@@ -34,7 +34,7 @@ function module.new(definition)
         return keys
     end
 
-    --- Objects the skeleton removes with the chest at cleanup.
+    --- Objects the shared event removes with the chest at cleanup.
     function visuals.scenery()
         local slots = {spire, beacon, stream_target}
         for _, list in ipairs({cover, barrier_props, conflux_props, plates}) do

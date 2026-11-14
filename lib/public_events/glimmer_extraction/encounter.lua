@@ -1,4 +1,4 @@
--- Glimmer Extraction mechanics on the shared event skeleton: one attempt follows the crew through
+-- Glimmer Extraction mechanics: one attempt follows the crew through
 -- three sites; a machine destroyed at every site turns the last clear into the heroic defense.
 local lib = require("lib.mission_lib")
 local event = require("lib.public_events.event")
@@ -119,7 +119,7 @@ function module.new(definition)
             end
         end
 
-        -- Reference order after the flag leaves: alert, ketch with the skiffs, then the crew.
+        -- After the flag leaves: alert, ketch with the skiffs, then the crew.
         hooks.incoming = {
             {delay_ms = c.ALERT_AFTER_LEAVE_MS, run = function(context)
                 ev:say(context, c.CUE_ALERT)

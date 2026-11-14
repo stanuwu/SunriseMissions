@@ -18,7 +18,7 @@ local HELLAS_RIG = {
     rally_key = "_80F6BA4D",
 }
 
---- Builds the region 8 Injection Rig handler on the shared event skeleton.
+--- Builds the region 8 Injection Rig handler.
 function events.injection_rig(mission)
     local definition = site.bind(mission, HELLAS_RIG)
     -- Use the event area for rally membership; the spawn-override volume is a thin slab.

@@ -1,4 +1,4 @@
--- Weapons Exchange mechanics on the shared event skeleton: the opening squads, the Arsenal
+-- Weapons Exchange mechanics: the opening squads, the Arsenal
 -- Walker's dropship, the cache barriers opened by player deposits and the heroic second Walker.
 local lib = require("lib.mission_lib")
 local event = require("lib.public_events.event")
@@ -93,7 +93,7 @@ function module.new(definition)
             scope:start_timer(c.PATH_TIMER, c.PATH_MS)
         end
 
-        -- Reference order after the flag leaves: ketch with the event row, then the alert.
+        -- After the flag leaves: ketch with the event row, then the alert.
         hooks.incoming = {
             {delay_ms = c.KETCH_AFTER_LEAVE_MS, run = function(context, scope)
                 context:activate_objects{slots = {definition.ketch}, active = true}

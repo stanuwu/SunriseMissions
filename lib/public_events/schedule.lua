@@ -3,8 +3,7 @@
 -- host's answer into the start the site takes.
 local schedule = {}
 
--- The rally flag stands this long before a scheduled start and until it: Destiny 2 announces a
--- public event five minutes ahead (Destinypedia). The client's own map lookahead is unrecovered.
+-- Reconstructed rally lead in seconds. The map computes its own visibility window.
 schedule.RALLY_LEAD_SECONDS = 300
 
 schedule.state = {incoming = "incoming", active = "active"}

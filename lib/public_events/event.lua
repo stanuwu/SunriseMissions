@@ -1,7 +1,5 @@
--- Public-event skeleton shared by every family: rally countdown, incoming steps, start,
--- membership, heroic commit, endings, abort and cleanup. A family supplies its site definition,
--- its settings and hooks for its own mechanics; mutable state stays in the host scope under the
--- family's key prefix.
+-- Owns the rally, encounter clock, heroic transition and cleanup for each site.
+-- A family supplies callbacks and site bindings. The host scope retains mutable state.
 local lib = require("lib.mission_lib")
 local runtime = require("lib.public_events.runtime")
 local presentation = require("lib.public_events.presentation")
@@ -34,6 +32,7 @@ local OPTIONAL_LISTS = {"incoming", "timers", "tracked", "scenery", "device_keys
 ---@field KEY string Host-scope prefix of the family; also its lifecycle timer name.
 ---@field EVENT_SECONDS integer Normal event duration.
 ---@field TICK_SECONDS integer Freeroam service cadence.
+---@field JOIN_LINE_TIMER string|nil Timer for the second cue when the site supplies join_lines.
 ---@field CUE_START integer Cue played once after local membership.
 ---@field CUE_SUCCESS integer
 ---@field CUE_FAILED integer
@@ -58,6 +57,7 @@ local OPTIONAL_LISTS = {"incoming", "timers", "tracked", "scenery", "device_keys
 ---@field rally RallyDefinition|nil Rally point opened before the event.
 ---@field event_sensor string|nil Type-71 sensor of the Director policy.
 ---@field event_area string|nil Type-60 area of the Director policy.
+---@field normal_event_state boolean|nil Send the normal sensor state at this site.
 
 ---@class EventRow
 ---@field directive table Row of the directive sensor to show.
@@ -92,6 +92,8 @@ local OPTIONAL_LISTS = {"incoming", "timers", "tracked", "scenery", "device_keys
 ---@field on_object_state fun(context, scope, site, report)|nil
 ---@field on_objective fun(context, scope, site, report)|nil
 ---@field on_trigger fun(context, scope, site, report)|nil
+---@field on_damage fun(context, scope, site, report)|nil Damage report while the event is active.
+---@field on_effect fun(context, scope, report)|nil Request result after device cache updates.
 ---@field on_incident fun(context, scope, site, report)|nil Accepted incidents while live.
 ---@field on_failure fun(context, scope, report)|nil Noncritical terminal request failures.
 ---@field on_interaction fun(context, scope, site, report)|nil Live uses beyond flag and chest.
@@ -547,7 +549,7 @@ function event.new(definition, settings, build)
             {retry = true, send = function(context, scope)
                 return {self:audience(context, scope, false)}
             end},
-            -- The closing policy is unrecovered; retain failures without replaying it.
+            -- Record a rejected close once. Retrying it could close a later attempt.
             {retry = false, blocking = false, send = function(context, scope)
                 return {self.director:close(context, scope:variable(self.director_key) == true
                     and scope:variable(self.director_normal_key) == true)}

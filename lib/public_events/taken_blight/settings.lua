@@ -1,7 +1,4 @@
--- Taken Blight content parameters and reconstructed policy; state keys remain host-scoped.
--- Timings marked "reference" are read from one retail Io recording and remain reconstructed
--- family timing policy. The shared skeleton owns the lifecycle,
--- membership, heroic, reward and incoming keys under the same prefix.
+-- Taken Blight encounter settings.
 local c = {}
 
 -- Retained keys preserve a running attempt across script reloads; "tb" is the event prefix.
@@ -21,21 +18,17 @@ c.ARRIVE_TIMER, c.FIGHT_TIMER, c.FINAL_TIMER = "tba", "tbg", "tbf"
 -- Most squads any location places: floater, anchor and three tethers.
 c.MAX_SQUADS = 5
 
--- Reference clocks: the marker reads 2:56 about 4 s after the start, each move resets the clock
--- to about 2:30 and the Blightmaker row starts near 2:30.
+-- Relocating and summoning the Blightmaker each start a new deadline.
 c.EVENT_SECONDS, c.PURSUE_SECONDS, c.HEROIC_SECONDS = 180, 150, 150
 
--- Reference incoming timing: the alert plays with the incoming row, the Blight's beam lands
--- about 7 s later and the marker clock starts about 4-6 s after that.
+-- Reconstructed time from the alert to the beam, then from the beam to the first fight.
 c.INTRO_AFTER_LEAVE_MS, c.ALERT_AFTER_INTRO_MS = 1000, 5000
 c.ARRIVE_AFTER_ALERT_MS, c.START_AFTER_ARRIVE_MS = 7000, 6000
 
--- Reference moves: the next Blight's beam lands about 14 s after the row changes and the fight
--- row returns within about 6 s, with no player nearby. No arrival report is exposed.
+-- The host has no landing report. Timers sequence the beam and the next fight.
 c.ARRIVE_MS, c.FIGHT_AFTER_ARRIVE_MS = 13000, 6000
 
--- Reference final location: the Blight still stood for at least 8 s at 0% before the heroic
--- join. The normal ending itself was not observed, so this window is reconstructed.
+-- Reconstructed window for the heroic trigger after the final location reaches zero integrity.
 c.FINAL_WINDOW_MS = 12000
 
 -- The row shows Blight Integrity as a percentage.
@@ -44,9 +37,7 @@ c.INTEGRITY_MAX = 100
 -- The existing freeroam service owns this zone clock and must match its cadence.
 c.TICK_SECONDS = 5
 
--- Cue indexes in the authored dialogue sensor. Alert, start and heroic were heard in the
--- reference; move and the normal and failure roles follow the authored lines and the cue layout
--- of the other families. Heroic success was heard at the chest.
+-- Dialogue sensor indexes for arrival, relocation and endings. The normal ending is reconstructed.
 c.CUE_ALERT, c.CUE_START, c.CUE_HEROIC, c.CUE_FAILED = 0, 1, 2, 3
 c.CUE_MOVE, c.CUE_SUCCESS, c.CUE_HEROIC_SUCCESS, c.CUE_HEROIC_FAILED = 4, 5, 6, 7
 

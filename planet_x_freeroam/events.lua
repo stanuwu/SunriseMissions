@@ -31,7 +31,7 @@ local function scheduled(handler, site_key)
     return handler
 end
 
---- Builds the Watcher's Grave Spire handler on the shared event skeleton.
+--- Builds the Watcher's Grave Spire handler.
 function events.watchers_grave(mission)
     local definition = site.bind(mission, WATCHERS_GRAVE)
     -- Preserve the native normal-state lifecycle; map nodes follow the separate schedule.
@@ -102,7 +102,7 @@ local function bind_ether_resupply(mission)
     }
 end
 
---- Builds the Watcher's Grave Ether Resupply handler on the shared event skeleton.
+--- Builds the Watcher's Grave Ether Resupply handler.
 function events.watchers_grave_ether(mission)
     return scheduled(ether.new(bind_ether_resupply(mission)), ETHER_SITE_KEY)
 end

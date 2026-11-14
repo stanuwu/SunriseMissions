@@ -12,7 +12,7 @@ local WAVES = {
     {"SQ_CENTER_GRP_1_TIER_2", "SQ_OUTSIDE_GRP_2_TIER_2", "SQ_MELEE_GRP_4_TIER_2"},
 }
 local HEROIC_WAVES = {"SQ_HEROIC_OUTSIDE_GROUP_1", "SQ_HEROIC_OUTSIDE_GROUP_2", "SQ_HEROIC_MELEE"}
--- Reference Interceptors fight during heroic; their authored rules name their own pods.
+-- Heroic Interceptors use these squads; their authored rules name their own pods.
 local INTERCEPTORS = {"SQ_INTERCEPTOR_1", "SQ_INTERCEPTOR_2"}
 -- Tiers in opening order: each names its weak point and its vent controls.
 local VENTS = {

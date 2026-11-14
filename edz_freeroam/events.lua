@@ -28,7 +28,7 @@ local THRESHER_COUNT = 3
 -- The first authored barrage group lands six artillery objects inside the artillery area.
 local BARRAGE, BARRAGE_SIZE = 0, 6
 
---- Binds the Winding Cove drill site; other sites require their own verified identities.
+--- Binds the Winding Cove drill site.
 local function bind_winding_cove(mission)
     local Slot, Squad = mission.Slot, mission.Squad
     local function slot(stem)
@@ -139,7 +139,7 @@ local function bind_winding_cove(mission)
     }
 end
 
---- Binds the region 24 Ether Resupply site; other sites require their own verified identities.
+--- Binds the region 24 Ether Resupply site.
 local function bind_ether_resupply(mission)
     local Slot = mission.Slot
     local function slot(stem)
@@ -178,7 +178,7 @@ local TANK_ROSTER = {"SQ_INITIAL_SCORCH_CAPTAIN", "SQ_TANK_FODDER_CACHE_MEDIUM_1
     "SQ_TANK", "SQ_TANK_MINIONS", "SQ_DROPSHIP_HEROIC", "SQ_HEROIC_TANK",
     "SQ_TANK_MINIONS_HEROIC", "SQ_HEROIC_REGULAR", "SQ_HEROIC_ANCHOR"}
 
---- Binds the region 24 Weapons Exchange site; other sites require their own verified identities.
+--- Binds the region 24 Weapons Exchange site.
 local function bind_weapons_exchange(mission)
     local Slot, Squad = mission.Slot, mission.Squad
     local function slot(stem)
@@ -280,14 +280,14 @@ local function bind_weapons_exchange(mission)
     }
 end
 
---- Builds the Winding Cove Cabal Excavation handler on the shared event skeleton.
+--- Builds the Winding Cove Cabal Excavation handler.
 function events.winding_cove(mission)
     return cabal.new(bind_winding_cove(mission))
 end
 
 -- The prefab tree of this registry; its first placement stands beside this rally flag.
 local MULTIPOINT, TAG, MULTIPOINT_RALLY = "PF_EVENT_MULTIPOINT_", "_80BE5D9B", "80BE4DC4"
--- Authored site order; the flag distances of 86 m and 176 m match the reference's two moves.
+-- Extraction crews move through these three sites in order.
 local SITE_COUNT = 3
 -- Radial covers around each drill.
 local RADIAL_COVER_COUNT = 4
@@ -300,7 +300,7 @@ local MULTIPOINT_VOLUMES = {MULTIPOINT .. "PF_PLACEMENT_0_PF_FALLEN_DRILL_TV_ENG
 local GLIMMER_WAVES = {"SQ_HEROIC_INITIAL_LIGHT_WAVE", "SQ_HEROIC_STEALTH_MELEE_WAVE",
     "SQ_HEROIC_HEAVY_WAVE", "SQ_HEROIC_FINALE_WAVE", "SQ_HEROIC_FINALE_BOSS"}
 
---- Binds the region 96 extraction site; other sites require their own verified identities.
+--- Binds the region 96 extraction site.
 local function bind_multipoint(mission)
     local Slot, Squad = mission.Slot, mission.Squad
     local function slot(stem)
@@ -398,12 +398,12 @@ local function bind_multipoint(mission)
     }
 end
 
---- Builds the region 96 Glimmer Extraction handler on the shared event skeleton.
+--- Builds the region 96 Glimmer Extraction handler.
 function events.multipoint_extraction(mission)
     return glimmer.new(bind_multipoint(mission))
 end
 
---- Builds the region 24 Ether Resupply handler on the shared event skeleton.
+--- Builds the region 24 Ether Resupply handler.
 function events.ether_resupply(mission)
     return ether.new(bind_ether_resupply(mission))
 end
@@ -420,12 +420,12 @@ local RIG_SITE = {
     final_row = "INJECTION_RIG",
 }
 
---- Builds the region 312 Injection Rig handler on the shared event skeleton.
+--- Builds the region 312 Injection Rig handler.
 function events.injection_rig(mission)
     return injection_rig.new(rig_site.bind(mission, RIG_SITE))
 end
 
---- Builds the region 24 Weapons Exchange handler on the shared event skeleton.
+--- Builds the region 24 Weapons Exchange handler.
 function events.weapons_exchange(mission)
     return weapons.new(bind_weapons_exchange(mission))
 end

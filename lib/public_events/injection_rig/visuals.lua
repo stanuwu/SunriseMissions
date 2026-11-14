@@ -50,13 +50,13 @@ function module.new(definition)
         devices.set_position(context, scope, pylon.device, c.PYLON_KEY, c.PYLON_IDLE, true)
     end
 
-    --- Raises one dome; a dome only stands while the reference shows it.
+    --- Raises the dome for the current burn.
     local function raise_dome(context, scope, shield, key)
         context:activate_objects{slots = {shield.object}, active = true}
         devices.set_position(context, scope, shield.device, key, c.SHIELD_UP, true)
     end
 
-    --- Raises the lasting dome the reference keeps up from heroic to the ending.
+    --- Keeps the dome raised through the heroic fight.
     function visuals.raise_heroic_dome(context, scope)
         raise_dome(context, scope, shields[2], c.SHIELD_LARGE_KEY)
     end

@@ -1,4 +1,4 @@
--- Cabal Excavation mechanics on the shared event skeleton: the override plate, wave groups
+-- Cabal Excavation mechanics: the override plate, wave groups
 -- from drop pods, the carrier's bombardment, the Thresher and the heroic Valus.
 local lib = require("lib.mission_lib")
 local event = require("lib.public_events.event")
@@ -140,7 +140,7 @@ function module.new(definition)
             scope:start_timer(c.THRESHER_TIMER, c.THRESHER_PATH_MS)
         end
 
-        -- Reference order after the flag leaves: carrier with the event row, alert, lander.
+        -- After the flag leaves: carrier with the event row, alert, lander.
         hooks.incoming = {
             {delay_ms = c.SHIP_AFTER_LEAVE_MS, run = function(context, scope)
                 visuals.fly_in(context, scope)

@@ -6,8 +6,7 @@ local c = require("lib.public_events.witches_ritual.settings")
 local site = {}
 
 local PREFIX = "PF_EVENT_HIVE_RITUAL_1_"
--- Rally flag whose spawn-override volume covers the arena: the volume shape 80BF6C10 appears in
--- the 80BF197E registry record, which was read directly.
+-- Rally registry 80BF197E contains spawn-override volume 80BF6C10 around the arena.
 local RALLY_SUFFIX = "_80BF197E"
 local SITE_SUFFIX = "_80BF1928"
 -- Acolyte wave stems by send order; the encounter settings index into this list.

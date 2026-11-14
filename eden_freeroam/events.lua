@@ -39,7 +39,7 @@ local GIANTS_SCAR = {
     rally_volume = "RALLY_POINT_SPAWN_OVERRIDE_VEX_BLOCK",
 }
 
---- Binds the region 136 Taken Blight; other sites require their own verified identities.
+--- Binds the region 136 Taken Blight.
 local function bind_site(mission)
     local Slot, Squad, TaskGroup = mission.Slot, mission.Squad, mission.TaskGroup
     local function slot(stem)
@@ -98,7 +98,7 @@ local function bind_site(mission)
         end
         locations[#locations + 1] = {
             blights = blights,
-            -- Which of the three objects carries the health is unrecovered; the first is bound.
+            -- The first of three Blight objects is the reconstructed health target.
             target = blights[1],
             monitor = slot(big .. "BLIGHT_DAMAGE"),
             shield = slot(big .. "TAKEN_SHIELD_SPAWNING_SEQUENCE"),
@@ -158,12 +158,12 @@ local function bind_site(mission)
     }
 end
 
---- Builds the region 136 Taken Blight handler on the shared event skeleton.
+--- Builds the region 136 Taken Blight handler.
 function events.taken_blight(mission)
     return blight.new(bind_site(mission))
 end
 
---- Builds the Giant's Scar Spire handler on the shared event skeleton.
+--- Builds the Giant's Scar Spire handler.
 function events.giants_scar(mission)
     local definition = site.bind(mission, GIANTS_SCAR)
     definition.join_lines = JOIN_LINES

@@ -1,4 +1,4 @@
--- Spire Integration mechanics on the shared event skeleton: lane waves, capture plates that
+-- Spire Integration mechanics: lane waves, capture plates that
 -- commit heroic and the spire's endings.
 local lib = require("lib.mission_lib")
 local event = require("lib.public_events.event")
@@ -20,7 +20,7 @@ function module.new(definition)
         local lane_logic = lane_module.new(definition, ev, visuals)
         local hooks = {}
 
-        -- Reference order after the flag leaves: beacon and construction with the event row,
+        -- After the flag leaves: beacon and construction with the event row,
         -- the row's completion, the alert, then the start.
         hooks.incoming = {
             {delay_ms = c.BEACON_AFTER_LEAVE_MS, run = function(context, scope)
@@ -42,9 +42,7 @@ function module.new(definition)
         hooks.tracked, hooks.required = lane_logic.tracked_keys()
         hooks.scenery = visuals.scenery()
         hooks.device_keys = visuals.device_keys()
-        -- The spire has two authored teardowns: the explosion bin, seen at the heroic end in the
-        -- retail recording, and the slow destroy bin, the only non-explosive one. Normal success
-        -- and failure both take the slow one.
+        -- Heroic success uses the explosion band. Normal success uses the slow dissolve.
         hooks.prelude = {delay_ms = c.END_EXPLODE_MS, run = function(context, scope)
             local value = ev:heroic(scope) and c.SPIRE_EXPLODE or c.SPIRE_DISSOLVE
             visuals.destroy_spire(context, scope, value)
@@ -95,7 +93,7 @@ function module.new(definition)
             if not succeeded then visuals.destroy_spire(context, scope, c.SPIRE_DISSOLVE) end
         end
 
-        --- The skeleton removes the scenery; the spire revision must keep counting across attempts.
+        --- Keep the spire revision across attempts when the event removes its scenery.
         function hooks.on_cleanup() end
 
         --- The clock running out with integrations left is the success.

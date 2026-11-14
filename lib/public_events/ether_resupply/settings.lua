@@ -1,6 +1,4 @@
--- Ether Resupply parameters and reconstructed policy; state keys remain host-scoped. The shared
--- skeleton (lib.public_events.event) owns the lifecycle, membership, heroic, reward and
--- incoming keys under the same prefix.
+-- Ether Resupply encounter settings.
 local c = {}
 
 -- Retained keys preserve a running attempt across script reloads; "er" is the event prefix.
@@ -12,13 +10,10 @@ c.SKIFF_KEY, c.CREW_KEY = "er.sk", "er.cr"
 c.INTRO_TIMER, c.INTRO_STAGE_KEY = "eri", "er.ist"
 c.INTRO_CREW, c.INTRO_DONE = 1, 2
 
--- Normal duration: the clock read 4:00 at the join banner and ran on through heroic without a
--- reset in launch-era EDZ footage (Gladd, 2017-09-27). One policy for every site of the family.
+-- Heroic retains the normal event's four-minute deadline.
 c.EVENT_SECONDS = 240
 
--- Intro beats, reconstructed from the same footage: the drop craft is overhead at 00:19, the Prime
--- materializes under it at 00:21, the join banner follows at 00:22, the clock starts at 00:24, and
--- the crew drops as the Prime appears. The Ketch is the user's report of what comes first.
+-- Reconstructed arrival order: Ketch, Skiff, Prime and crew, then the join banner.
 c.KETCH_AFTER_LEAVE_MS = 1000
 c.SKIFF_AFTER_KETCH_MS = 3000
 c.START_AFTER_SKIFF_MS = 5000
@@ -29,8 +24,7 @@ c.INTRO_MS = 8000
 -- The existing freeroam service owns this zone clock and must match its cadence.
 c.TICK_SECONDS = 5
 
--- Reconstructed music sections, as at the other families. The authored sections of this
--- registry are unmapped.
+-- The authored music sections have no role names; the selections are reconstructed.
 c.MUSIC_ACTIVE, c.MUSIC_HEROIC = 0, 1
 
 return c

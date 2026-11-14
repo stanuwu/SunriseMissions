@@ -1,4 +1,4 @@
--- Injection Rig mechanics on the shared event skeleton: each Infiltrator Psion's death burns the
+-- Injection Rig mechanics: each Infiltrator Psion's death burns the
 -- dome and opens one vent tier; a vent hit on every tier commits heroic. A Valus ends either way.
 local lib = require("lib.mission_lib")
 local event = require("lib.public_events.event")
@@ -110,7 +110,7 @@ function module.new(definition)
             scope:start_timer(c.PSION_TIMER, c.NEXT_PSION_MS)
         end
 
-        -- Reference order on Mars: alert with the incoming row, the rig falls, then joining.
+        -- On Mars: alert with the incoming row, the rig falls, then joining.
         hooks.incoming = {
             {delay_ms = c.ALERT_AFTER_LEAVE_MS, run = function(context, scope)
                 visuals.fly_in(context, scope)
@@ -186,7 +186,7 @@ function module.new(definition)
             end
         end
 
-        --- Closes any open window; at an ending the reference squads fight on until cleanup.
+        --- Closes any open window; ending squads stay alive until cleanup.
         function hooks.on_stop(context, scope)
             close_window(context, scope)
             if ev:phase(scope) ~= runtime.phase.ending then retire_squads(context, scope) end

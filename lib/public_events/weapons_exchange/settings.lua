@@ -1,7 +1,4 @@
--- Weapons Exchange content parameters and reconstructed policy; state keys remain host-scoped.
--- Values marked "unread" were not legible in the reviewed recording and remain placeholders.
--- The shared skeleton (lib.public_events.event) owns the lifecycle, membership, heroic, reward
--- and incoming keys under the same prefix.
+-- Weapons Exchange encounter settings.
 local c = {}
 
 -- Retained keys preserve a running attempt across script reloads; "w" is the event prefix.
@@ -18,13 +15,13 @@ c.PATH_KEY = "w.pp"
 -- Family timers remain distinct from the shared lifecycle, incoming and rally timers.
 c.PATH_TIMER = "wp"
 
--- Unobserved incoming timing: the reviewed footage starts after the event has joined.
+-- Reconstructed intervals from flag withdrawal to the Ketch, alert and start.
 c.KETCH_AFTER_LEAVE_MS, c.ALERT_AFTER_KETCH_MS, c.START_AFTER_ALERT_MS = 5000, 3000, 12000
 
 -- The dropship spawns at its anchor; its path command follows after this reconstructed margin.
 c.PATH_MS = 2000
 
--- Unread clock totals; the reviewed footage never showed a legible reading.
+-- The normal and heroic clock durations are reconstructed.
 c.EVENT_SECONDS, c.HEROIC_SECONDS = 300, 240
 -- Reconstructed heroic eligibility requires time left for the second Walker.
 c.HEROIC_MIN_REMAINING_SECONDS = 30
@@ -32,10 +29,7 @@ c.HEROIC_MIN_REMAINING_SECONDS = 30
 -- The existing freeroam service owns this zone clock and must match its cadence.
 c.TICK_SECONDS = 5
 
--- Cue indexes in the authored dialogue sensor, assigned from the authored line text: the ketch
--- warning, the stockpile remark, the caches opening, the ketch leaving, the Walker wrecked, both
--- Walkers and the cannons taken, and "one Walker short". Cue 4 ("We did some damage") and
--- cue 8 (the tea invitation) have no evidenced trigger and stay unused.
+-- Dialogue indexes follow the authored lines for the caches, Ketch and Walkers.
 c.CUE_ALERT, c.CUE_START, c.CUE_CACHES, c.CUE_FAILED = 0, 1, 2, 3
 c.CUE_SUCCESS, c.CUE_HEROIC_SUCCESS, c.CUE_HEROIC_FAILED = 5, 6, 7
 

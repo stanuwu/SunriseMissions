@@ -1,4 +1,4 @@
--- Witches' Ritual mechanics on the shared event skeleton: sigil occupancy drops each wizard's
+-- Witches' Ritual mechanics: sigil occupancy drops each wizard's
 -- shield, both wizards dying opens the portal, and the portal brings the Sorcerer, or the Champion
 -- when both crystals fall first. Reconstructed policy is marked in settings.lua.
 local lib = require("lib.mission_lib")

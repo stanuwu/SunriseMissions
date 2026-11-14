@@ -1,5 +1,5 @@
 -- Taken Blight follows three authored locations; reconstructed integrity counts whole-squad clears.
--- Heroic reads watched object health; the native health/buff target join remains unverified.
+-- Heroic reads the bound Blight's health. The link to the player buff is reconstructed.
 local lib = require("lib.mission_lib")
 local event = require("lib.public_events.event")
 local presentation = require("lib.public_events.presentation")
@@ -148,7 +148,7 @@ function module.new(definition)
             return false
         end
 
-        -- Reference order after the flag leaves: darkening with the row, alert, the Blight.
+        -- After the flag leaves: darkening with the row, alert, the Blight.
         hooks.incoming = {
             {delay_ms = c.INTRO_AFTER_LEAVE_MS, run = function(context, scope)
                 reset(scope)
@@ -220,12 +220,12 @@ function module.new(definition)
 
         hooks.on_stop = retire_squads
 
-        --- The Blight goes at a normal ending; its authored exit animation is unrecovered.
+        --- Removes the Blight on normal completion.
         function hooks.on_finish(context, scope)
             if not ev:heroic(scope) then depart(context, here(scope)) end
         end
 
-        --- The skeleton removes the scenery; this family holds no other final state.
+        --- The shared event removes the scenery; this family holds no other final state.
         function hooks.on_cleanup() end
 
         --- Advances Integrity on squad clears and succeeds on the Blightmaker's death.

@@ -1,14 +1,10 @@
 -- Native public-event sensor state for objective/HUD presentation.
 -- Director map nodes read the authored schedule independently of these writes.
--- Normal-state sending remains site opt-in; accepted Spire sensor policy is preserved.
 local director = {}
 
--- Normal-state sending is site opt-in; heroic-state sending remains enabled.
-local SEND_EVENT_SENSOR = false
-local SEND_HEROIC_SENSOR = true
--- Sensor states: 1 while an event is live, 0 when it closes. The native meaning is unresolved.
-local STATE_ACTIVE, STATE_CLOSED = 1, 0
--- Retained leave delay the Spire heroic banner ran with.
+-- Heroic and closing values sent to the type-71 sensor.
+local STATE_HEROIC, STATE_CLOSED = 1, 0
+-- Leave delay sent with the heroic sensor state, in seconds.
 local LEAVE_SECONDS = 600
 -- Site-opt-in normal sensor state, sent at start and withdrawn only by its owning cleanup.
 local NORMAL_STATE, NORMAL_LEAVE_SECONDS = 0, 30
@@ -33,11 +29,6 @@ function Director:bound()
     return self.sensor ~= nil and self.area ~= nil
 end
 
---- True when this site sends the normal state: the global policy or the site's opt-in.
-function Director:sends_normal()
-    return (SEND_EVENT_SENSOR or self.normal_opt_in) and self:bound()
-end
-
 --- Returns the sensor handle for rows that name it, or nil without one.
 function Director:handle(context)
     if self.sensor == nil then return nil end
@@ -59,20 +50,17 @@ end
 ---@param context table Borrowed callback context.
 ---@return userdata|nil request Queued request, or nil when normal sends are disabled or unbound.
 function Director:activate(context)
-    if not self:sends_normal() then return end
-    if self.normal_opt_in then
+    if self.normal_opt_in and self:bound() then
         return self:send(context, NORMAL_STATE, NORMAL_LEAVE_SECONDS)
-    else
-        return self:send(context, STATE_ACTIVE, LEAVE_SECONDS)
     end
 end
 
 --- Publishes the heroic state before the heroic objective row.
 ---@param context table Borrowed callback context.
----@return userdata|nil request Queued request, or nil when heroic sends are disabled or unbound.
+---@return userdata|nil request Queued request, or nil when the site has no sensor or area.
 function Director:heroic(context)
-    if SEND_HEROIC_SENSOR and self:bound() then
-        return self:send(context, STATE_ACTIVE, LEAVE_SECONDS)
+    if self:bound() then
+        return self:send(context, STATE_HEROIC, LEAVE_SECONDS)
     end
 end
 

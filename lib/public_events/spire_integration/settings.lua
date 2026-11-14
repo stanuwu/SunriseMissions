@@ -1,6 +1,4 @@
--- Spire content parameters and reconstructed policy; state keys remain host-scoped. The shared
--- skeleton (lib.public_events.event) owns the lifecycle, rally, membership, heroic, reward and
--- incoming keys under the same prefix.
+-- Spire lane, device and encounter settings.
 local c = {}
 
 -- Retained keys preserve a running attempt across script reloads; "e" is the event prefix.
@@ -78,7 +76,7 @@ c.FINAL_WAVES = {c.WAVE_HOBGOBLINS, c.WAVE_GOBLINS, c.WAVE_HYDRA}
 c.HEROIC_WAVES = {c.WAVE_HEADLESS_GOBLINS, c.WAVE_ARCHITECTOR_GOBLINS, c.WAVE_HEADLESS_MINOTAURS,
     c.WAVE_ARCHITECTOR_MINOTAURS, c.WAVE_ARCHITECTOR_HYDRA}
 
--- Reconstructed: guides describe heroic arriving from one direction, so these squads hold one lane.
+-- Heroic reinforcement uses one lane. The squad selection is reconstructed.
 c.HEROIC_SOLO_WAVES = {[c.WAVE_ARCHITECTOR_MINOTAURS] = true, [c.WAVE_ARCHITECTOR_HYDRA] = true}
 
 -- Reconstructed: a lane sends this two-member wave while a big squad is out elsewhere.
@@ -115,13 +113,11 @@ c.CUE_HEROIC_FAILED = c.CUE_FAILED
 -- Reconstructed normal and heroic music section selections.
 c.MUSIC_ACTIVE, c.MUSIC_HEROIC = 0, 1
 
--- Reference incoming timing after the flag leaves: five seconds to the beacon and build, six
--- seconds of the event row, five to the alert, seven to the start.
+-- Reconstructed intervals between flag withdrawal, construction, the event row and the alert.
 c.BEACON_AFTER_LEAVE_MS, c.ROW_SHOWN_MS = 5000, 6000
 c.ALERT_AFTER_ROW_MS, c.START_AFTER_ALERT_MS = 5000, 7000
 
--- Reconstructed delay between the success line and the explosion; the skeleton owns the
--- banner, chest and grace delays that follow.
+-- Reconstructed time from the success line to the teardown. The event owns the chest timer.
 c.END_EXPLODE_MS = 5000
 
 -- Normal Spire encounter duration is four minutes and thirty seconds.
@@ -133,8 +129,7 @@ c.INTRO_MS = 8000
 -- Completed sacrifices consume the initial integration allowance.
 c.INTEGRATIONS = 10
 
--- The opening squad (class 0x80C0D08A, which binds the same lane program) is placed at the start
--- as authored. Set false to leave it out; its role in the central spawns is unproven.
+-- The opening squad uses the same lane program as the later waves (class 0x80C0D08A).
 c.PLACE_OPENING_SQUAD = true
 
 -- Device indexes match the lane definition: pillar first, barrier second.

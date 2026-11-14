@@ -1,4 +1,4 @@
--- Ether Resupply mechanics on the shared event skeleton: the Prime Ether Servitor is the one
+-- Ether Resupply mechanics: the Prime Ether Servitor is the one
 -- critical role and its death ends the event. A site that authors the intro gets the Ketch, the
 -- skeleton-crew Skiff and its Vandals, the communion, the beam and the covers around the Prime.
 -- The Transport Servitors, their shield, the heroic commit and the supporting waves are not
@@ -51,7 +51,7 @@ function module.new(definition)
             hooks.timers = {c.INTRO_TIMER}
             hooks.scenery = {intro.ketch, intro.beam}
             for _, slot in ipairs(intro.cover) do hooks.scenery[#hooks.scenery + 1] = slot end
-            -- Reference order after the flag leaves: the Ketch with the event row, then the Skiff;
+            -- After the flag leaves: the Ketch with the event row, then the Skiff;
             -- the Prime follows at the start.
             hooks.incoming = {
                 {delay_ms = c.KETCH_AFTER_LEAVE_MS, run = function(context, scope)
@@ -128,10 +128,10 @@ function module.new(definition)
             end
         end
 
-        --- No site-specific ending beat; the skeleton's banner and chest follow.
+        --- No site-specific ending beat; the event's banner and chest follow.
         function hooks.on_finish() end
 
-        --- The skeleton removes the scenery with the chest; nothing else is queued.
+        --- The shared event removes the scenery with the chest; nothing else is queued.
         function hooks.on_cleanup() end
 
         --- The Prime's death report ends the event once; a repeated report finds no live Prime.
