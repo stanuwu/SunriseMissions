@@ -66,6 +66,7 @@ local function bind_ether_resupply(mission)
     -- The Prime takes its authored boss objective.
     local boss_objective = slot("OBJ_BOSS")
     local prime = unit("SQ_ULTRA_SERVITOR")
+    prime.member = slot("SQ_ULTRA_SERVITOR_BOSS")
     prime.objective = boss_objective
     prime.task_group =
         lib.one(mission.TaskGroup[SERVITOR_PREFIX .. "OBJ_BOSS"], "boss task group").GROUP_0
@@ -77,6 +78,22 @@ local function bind_ether_resupply(mission)
     for index = 0, SERVITOR_COVER_COUNT - 1 do cover[#cover + 1] = slot("O_COVER_" .. index) end
     return {
         prime = prime,
+        resupply = {
+            shield = slot("HO_INVINCIBLE_ULTRA"),
+            filter = slot("OF_ULTRA_SERVITOR"),
+            lone = unit("SQ_CELLKEEPER_SHIELD"),
+            trio = {unit("SQ_CELLKEEPER_SERVITOR_1"), unit("SQ_CELLKEEPER_SERVITOR_2"),
+                unit("SQ_CELLKEEPER_SERVITOR_3")},
+            support = {
+                {unit("SQ_SUPPORT_BASE_1"), unit("SQ_SUPPORT_MAJOR_1_TIER_1")},
+                {unit("SQ_SUPPORT_BASE_2"), unit("SQ_SUPPORT_MAJOR_2_TIER_1")},
+                {unit("SQ_SUPPORT_BASE_3"), unit("SQ_SCORCH_CAPTAIN")},
+            },
+            heroic_support = unit("SQ_MELEE_FODDER_TIER_2"),
+            heroic_teleporter = slot("O_HEROIC_PLAYER_TELEPORTER"),
+            enrage = slot("SEQ_BOSS_ENRAGE_CUE"),
+            charge_end = slot("SEQ_BOSS_HEROIC_CHARGE_END"),
+        },
         intro = {
             ketch = lib.one(Slot.KETCH_INTRO_PREFAB_1_O_KETCH_INTRO, "ketch intro"),
             sequence = slot("SEQ_INTRO_BEHAVIOR"),

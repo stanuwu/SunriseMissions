@@ -286,13 +286,13 @@ function Event:rally_open(scope)
         and scope:variable(self.stage_key) == STEP_LEAVE
 end
 
---- Commits heroic once: family reinforcements, heroic music, a restarted clock, the sensor
---- and the heroic row, in the order the Spire heroic banner ran with.
+--- Commits heroic with reinforcements, music, the event sensor and the heroic row.
+---@param seconds integer|nil New duration in seconds; omit to keep the running deadline.
 function Event:commit_heroic(context, scope, seconds)
     scope:set_variable(self.heroic_key, true)
     if self.hooks.on_heroic ~= nil then self.hooks.on_heroic(context, scope) end
     self:music(context, self.settings.MUSIC_HEROIC)
-    self.lifecycle:restart_clock(scope, seconds)
+    if seconds ~= nil then self.lifecycle:restart_clock(scope, seconds) end
     if self.director:heroic(context) ~= nil then scope:set_variable(self.director_key, true) end
     self:goal(context, scope, presentation.directive.enter)
 end

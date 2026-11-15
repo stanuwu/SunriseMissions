@@ -1,12 +1,9 @@
--- Ether Resupply mechanics: the Prime Ether Servitor is the one
--- critical role and its death ends the event. A site that authors the intro gets the Ketch, the
--- skeleton-crew Skiff and its Vandals, the communion, the beam and the covers around the Prime.
--- The Transport Servitors, their shield, the heroic commit and the supporting waves are not
--- here yet.
+-- Ether Resupply: the Prime owns the objective. The site supplies its intro and Transport waves.
 local lib = require("lib.mission_lib")
 local event = require("lib.public_events.event")
 local presentation = require("lib.public_events.presentation")
 local squads = require("lib.public_events.squads")
+local transports = require("lib.public_events.ether_resupply.transports")
 local c = require("lib.public_events.ether_resupply.settings")
 
 local module = {}
@@ -32,8 +29,13 @@ function module.new(definition)
     return event.new(definition, c, function(ev)
         local hooks = {}
 
-        -- The cues of this registry's dialogue sensor are unmapped; no line is played.
-        function ev:say() end
+        local combat
+        if definition.resupply ~= nil then
+            combat = transports.new(ev, prime, definition.resupply)
+        else
+            -- The EDZ site's cue order is unmapped.
+            function ev:say() end
+        end
 
         hooks.tracked = {}
         squads.append_request_keys(hooks.tracked, c.PRIME_KEY)
@@ -43,12 +45,13 @@ function module.new(definition)
         hooks.required = {c.PRIME_KEY}
         hooks.incoming = {}
         hooks.scenery = {}
+        hooks.timers = {}
         if intro ~= nil then
             squads.append_request_keys(hooks.tracked, c.SKIFF_KEY)
             for index = 1, #intro.crew do
                 squads.append_request_keys(hooks.tracked, c.CREW_KEY .. index)
             end
-            hooks.timers = {c.INTRO_TIMER}
+            hooks.timers[1] = c.INTRO_TIMER
             hooks.scenery = {intro.ketch, intro.beam}
             for _, slot in ipairs(intro.cover) do hooks.scenery[#hooks.scenery + 1] = slot end
             -- After the flag leaves: the Ketch with the event row, then the Skiff;
@@ -57,12 +60,24 @@ function module.new(definition)
                 {delay_ms = c.KETCH_AFTER_LEAVE_MS, run = function(context, scope)
                     context:activate_objects{slots = {intro.ketch}, active = true}
                     ev:show_incoming(context, scope, presentation.directive.enter)
+                    ev:say(context, c.CUE_INCOMING)
                 end},
                 {delay_ms = c.SKIFF_AFTER_KETCH_MS, run = function(context, scope)
                     squads.place(context, scope, intro.skiff, c.SKIFF_KEY)
                 end},
             }
             hooks.start_delay_ms = c.START_AFTER_SKIFF_MS
+        end
+        if combat ~= nil then
+            hooks.timers[#hooks.timers + 1] = c.LONE_TIMER
+            hooks.timers[#hooks.timers + 1] = c.TRIO_TIMER
+            hooks.timers[#hooks.timers + 1] = c.SUPPORT_TIMER
+            function hooks.on_damage(context, scope, _, report)
+                combat.damage(context, scope, report)
+                return false
+            end
+            hooks.on_heroic = combat.heroic
+            hooks.on_failure = combat.failed
         end
 
         --- The single objective row. Its marker stays on the site's point: a row's navpoint must be
@@ -90,6 +105,7 @@ function module.new(definition)
         --- Places the Prime; with the intro, under its communion and beam, with the covers up.
         function hooks.on_start(context, scope)
             squads.place(context, scope, prime, c.PRIME_KEY)
+            if combat ~= nil then scope:start_timer(c.SUPPORT_TIMER, c.SUPPORT_INTERVAL_MS) end
             if intro == nil then return end
             context:activate_objects{slots = {intro.beam}, active = true}
             context:activate_objects{slots = intro.cover, active = true}
@@ -101,7 +117,10 @@ function module.new(definition)
 
         --- The intro's two beats: the crew drops, then the intro ends.
         function hooks.on_timer(context, scope, _, _, name)
-            if name ~= c.INTRO_TIMER then return false end
+            if name ~= c.INTRO_TIMER then
+                if combat ~= nil then combat.timer(context, scope, name) end
+                return false
+            end
             local stage = scope:variable(c.INTRO_STAGE_KEY)
             if stage == c.INTRO_CREW then
                 drop_crew(context, scope)
@@ -116,6 +135,7 @@ function module.new(definition)
 
         --- Retires whatever still stands: the Prime, the Skiff and the crew; the scene stops.
         function hooks.on_stop(context, scope)
+            if combat ~= nil then combat.stop(context, scope) end
             squads.retire_if_placed(context, scope, prime, c.PRIME_KEY)
             if intro == nil then return end
             squads.retire_if_placed(context, scope, intro.skiff, c.SKIFF_KEY)
@@ -136,12 +156,14 @@ function module.new(definition)
 
         --- The Prime's death report ends the event once; a repeated report finds no live Prime.
         function hooks.on_squad(context, scope, _, report)
-            if scope:variable(c.PRIME_KEY) == nil
-                or not lib.is_slot(context, report, prime.slot) then
-                return false
+            if lib.is_slot(context, report, prime.slot) then
+                if scope:variable(c.PRIME_KEY) ~= nil then
+                    scope:clear_variable(c.PRIME_KEY)
+                    ev:finish(context, scope, true)
+                end
+            elseif combat ~= nil then
+                combat.squad(context, scope, report)
             end
-            scope:clear_variable(c.PRIME_KEY)
-            ev:finish(context, scope, true)
             return false
         end
 
@@ -151,6 +173,7 @@ function module.new(definition)
                 and squads.counted_out(context, prime, report) then
                 return hooks.on_squad(context, scope, site, report)
             end
+            if combat ~= nil then combat.squad(context, scope, report) end
             return false
         end
 
