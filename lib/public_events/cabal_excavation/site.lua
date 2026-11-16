@@ -115,7 +115,9 @@ function site.bind(mission, placement)
         waves = waves,
         heroic_waves = heroic_waves,
         threshers = threshers,
-        thresher_path = slot("MOSQUITO_ENTRANCE_PATH"),
+        -- The entrance and exit paths are single points, which no actor can be sent along; the
+        -- downward path has a destination. Reconstructed: it brings the Thresher over the site.
+        thresher_path = slot("MOSQUITO_DOWNWARDS_PATH"),
         artillery = artillery,
         sniper = unit("PSION_SNIPER_SQUAD", sniper_pod, nil, task("SNIPER_OBJECTIVE")),
         valus = unit("ULTRA_BOSS_SQUAD", ultra_pod, nil, heroic_task),

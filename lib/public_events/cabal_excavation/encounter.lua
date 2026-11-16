@@ -11,6 +11,8 @@ local module = {}
 
 -- A refused heroic-trigger squad leaves normal play running but cannot qualify for heroic.
 local THRESHER_FAILED_KEY = c.THRESHER_KEY .. ".failed"
+-- Set when the runtime refuses the Thresher's flight path.
+local THRESHER_GROUNDED_KEY = c.THRESHER_KEY .. ".grounded"
 
 --- Counts players in a plate occupancy mask.
 local function occupants(mask)
@@ -127,12 +129,15 @@ function module.new(definition)
             return true
         end
 
-        --- Places the first Thresher, then sends its pilot along the entrance path.
+        --- Places the first Thresher, then sends its pilot along its flight path. A refused
+        --- path leaves the Thresher at its authored anchor and is retained for the log.
         local function fly_thresher(context, scope)
             if scope:variable(THRESHER_FAILED_KEY .. 1) == true then return end
             if scope:variable(c.THRESHER_PATH_KEY) == true then
                 scope:clear_variable(c.THRESHER_PATH_KEY)
-                squads.follow_path(context, threshers[1].pilot, definition.thresher_path)
+                if not squads.follow_path(context, threshers[1].pilot, definition.thresher_path) then
+                    scope:set_variable(THRESHER_GROUNDED_KEY, true)
+                end
                 return
             end
             place(context, scope, threshers[1], c.THRESHER_KEY .. 1)
@@ -204,6 +209,7 @@ function module.new(definition)
             scope:set_variable(c.WAVE_COUNT_KEY, 0)
             scope:clear_variable(c.CAPTURED_KEY)
             scope:clear_variable(c.THRESHER_PATH_KEY)
+            scope:clear_variable(THRESHER_GROUNDED_KEY)
             scope:clear_variable(c.ENDED_VALUS_KEY)
             for index = 1, #threshers do
                 scope:clear_variable(THRESHER_FAILED_KEY .. index)

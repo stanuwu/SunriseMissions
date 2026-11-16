@@ -88,9 +88,14 @@ function squads.drop(context, scope, unit, standing_prefix)
     scope:set_variable(key, true)
 end
 
---- Sends one placed actor along an authored path; the request is not tracked.
+--- Sends one placed actor along an authored path; the request is not tracked. The runtime
+--- raises an error for a path with no destination point. A flight only moves an actor that
+--- already stands, so the refusal must not stop the event: it is caught and reported.
+---@return boolean sent False when the runtime refused the path; the actor stays where it is.
 function squads.follow_path(context, actor, path)
-    context:slot(actor):play_actor_path{path = context:slot(path)}
+    return (pcall(function()
+        context:slot(actor):play_actor_path{path = context:slot(path)}
+    end))
 end
 
 return squads
