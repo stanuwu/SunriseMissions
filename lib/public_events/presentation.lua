@@ -19,22 +19,19 @@ function presentation.music(context, sensor, section, default_section)
     }
 end
 
---- Rebinds an audience with a new revision; an absent sensor leaves it unchanged. The volumes
---- argument is one slot or a list of same-owner slots; a player inside any of them is a member.
+--- Rebinds an audience and clears its gathered members; an absent sensor leaves it unchanged. The
+--- volumes argument is one slot or a list of same-owner slots; a player inside any is a member.
 ---@return userdata|nil request Queued binding, or nil when the sensor is absent.
 ---@param everyone boolean|nil Admit every present player as well as the occupants of the volumes.
-function presentation.audience(context, scope, sensor, volumes, key, enabled, everyone)
+function presentation.audience(context, sensor, volumes, enabled, everyone)
     if sensor == nil then return end
     if type(volumes) ~= "table" then volumes = {volumes} end
     local handles = {}
     if enabled then
         for _, volume in ipairs(volumes) do handles[#handles + 1] = context:slot(volume) end
     end
-    local revision = (scope:variable(key) or 0) + 1
-    local request = context:slot(sensor):set_engagement{volumes = handles, revision = revision,
+    return context:slot(sensor):set_engagement{volumes = handles, clear = true,
         everyone = (enabled and everyone == true) or nil}
-    scope:set_variable(key, revision)
-    return request
 end
 
 ---@class GoalOptions

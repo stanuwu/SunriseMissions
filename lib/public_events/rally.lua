@@ -95,7 +95,6 @@ function rally.new(definition, prefix)
         used_key = prefix .. ".fu",
         total_key = prefix .. ".ft",
         audio_key = prefix .. ".fa",
-        audience_key = prefix .. ".rar",
         leave_timer = prefix .. "rl",
         audio_timer = prefix .. "ra",
         stop_timer = prefix .. "rz",
@@ -170,8 +169,8 @@ function Rally:show(context, scope)
             clock = {remaining = seconds, total = total},
         }
         -- The rally definition requires membership to keep its countdown visible.
-        presentation.audience(context, scope, definition.engagement, definition.volume,
-            self.audience_key, true, definition.admit_everyone == true)
+        presentation.audience(context, definition.engagement, definition.volume, true,
+            definition.admit_everyone == true)
     end
     self:update_audio(context, scope)
 end
@@ -252,8 +251,7 @@ function Rally:close(context, scope, keep_audience)
     local definition = self.definition
     context:slot(definition.sensor):clear_directives()
     if not keep_audience and definition.directive ~= nil and self:used(scope) ~= nil then
-        presentation.audience(context, scope, definition.engagement, definition.volume,
-            self.audience_key, false)
+        presentation.audience(context, definition.engagement, definition.volume, false)
     end
 end
 

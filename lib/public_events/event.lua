@@ -141,8 +141,8 @@ end
 ---@return userdata|nil request Queued binding, or nil without a sensor.
 function Event:audience(context, scope, enabled)
     local definition = self.definition
-    return presentation.audience(context, scope, definition.engagement,
-        definition.engagement_volumes or definition.engagement_volume, self.audience_key, enabled)
+    return presentation.audience(context, definition.engagement,
+        definition.engagement_volumes or definition.engagement_volume, enabled)
 end
 
 --- Returns the marker handle of a row's own slot or the site's location; nil without either.
@@ -517,7 +517,6 @@ function event.new(definition, settings, build)
             arrived_key = key .. ".av",
             heroic_key = key .. ".h",
             reward_key = key .. ".rw",
-            audience_key = key .. ".ar",
             -- Records queued sensor ownership, not confirmed client state.
             director_key = key .. ".ds",
             director_normal_key = key .. ".dn",
@@ -526,10 +525,6 @@ function event.new(definition, settings, build)
         local hooks = build(self)
         for _, name in ipairs(OPTIONAL_LISTS) do hooks[name] = hooks[name] or {} end
         if self.rally ~= nil then
-            -- One native audience keeps one revision across rally and active play.
-            if definition.rally.engagement == definition.engagement then
-                self.rally.audience_key = self.audience_key
-            end
             hooks.device_keys[#hooks.device_keys + 1] = self.rally.audio_key
         end
         hooks.on_cleanup = hooks.on_cleanup or function() return {} end
