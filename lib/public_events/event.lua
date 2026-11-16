@@ -348,7 +348,7 @@ function Event:abort(context, scope)
     local flag_standing = self:rally_open(scope)
     self.lifecycle:enter(scope, runtime.phase.aborted)
     self:stop(context, scope, live)
-    if flag_standing then self.rally:leave(context, scope) end
+    if flag_standing then self.rally:withdraw(context, scope) end
     if self.rally ~= nil then self.rally:close(context, scope) end
     self:cleanup(context, scope)
     self.lifecycle:release(scope)

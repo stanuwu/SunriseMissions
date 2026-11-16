@@ -19,12 +19,25 @@ local MS_PER_SECOND = 1000
 local COUNTDOWN_SECONDS = 60
 -- The completed countdown lingers for one second before the flag leaves.
 local LINGER_MS = 1000
--- Reconstructed tone update cadence; the flag's authored sound owns repetition and pitch.
-local AUDIO_UPDATE_MS = 1000
--- Stay inside the tone range and below the separate endpoint branch near position 1.
-local AUDIO_MIN_POSITION, AUDIO_MAX_POSITION = 0.01, 0.99
--- Reconstructed urgency ramp accelerates the tone during the final ten seconds.
-local AUDIO_ACCELERATE_SECONDS = 10
+-- The flag's authored sound owns repetition and pitch; the device position selects them. In the
+-- 16 November recording both change in steps five seconds apart, counted back from the moment
+-- the flag leaves, and the two pitch steps (130 and 126 cents) are what the authored pitch curve
+-- gives for one step of 5 s in 300 s. The position is therefore the elapsed share of a
+-- five-minute countdown, moved every five seconds.
+local AUTHORED_SECONDS, STAGE_SECONDS = 300, 5
+-- A shorter countdown plays the last three stages as authored and spreads the earlier part of
+-- the authored range over the time before them (reconstruction policy).
+local FINAL_SECONDS = 15
+-- Interval armed on the tone timer to read the host time back from its deadline.
+local CLOCK_READ_MS = 1000
+-- A stage timer fires this long after its boundary, so the reading lies inside the new stage.
+local STAGE_MARGIN_MS = 50
+-- Lowest position inside the tone's range.
+local AUDIO_MIN_POSITION = 0.01
+-- The authored ending past the tone's range: the recording has one long tone here while the
+-- flag folds away, about a second long.
+local AUDIO_END_POSITION = 1
+local FOLD_MS = 1500
 -- Flag incidents identify no player; retain a distinct non-player marker.
 local INCIDENT_OWNER = "incident"
 
@@ -138,6 +151,7 @@ function rally.new(definition, prefix)
         used_key = prefix .. ".fu",
         total_key = prefix .. ".ft",
         audio_key = prefix .. ".fa",
+        fold_key = prefix .. ".fd",
         leave_timer = prefix .. "rl",
         audio_timer = prefix .. "ra",
         stop_timer = prefix .. "rz",
@@ -168,6 +182,7 @@ function Rally:open(context, scope, seconds, total)
     total = total or COUNTDOWN_SECONDS
     local countdown = seconds or total
     scope:clear_variable(self.used_key)
+    scope:clear_variable(self.fold_key)
     scope:set_variable(self.total_key, total)
     context:activate_objects{slots = {definition.flag}, active = true}
     context:slot(definition.flag):set_interactable_object{track_owner = true}
@@ -180,14 +195,27 @@ function Rally:total(scope)
     return scope:variable(self.total_key) or COUNTDOWN_SECONDS
 end
 
---- Milliseconds left on the countdown at current host time, or nil once the stop timer has gone.
+--- Milliseconds from current host time to a rally timer's deadline, or nil once it has gone.
 --- Re-arms the tone timer: its new deadline is how the script reads the host time.
-function Rally:remaining_ms(scope)
-    local deadline = tonumber(scope.state:timer(scope:key(self.stop_timer)))
+function Rally:until_ms(scope, timer)
+    local deadline = tonumber(scope.state:timer(scope:key(timer)))
     if deadline == nil then return nil end
-    scope:start_timer(self.audio_timer, AUDIO_UPDATE_MS)
-    local next_update = tonumber(scope.state:timer(scope:key(self.audio_timer)))
-    return deadline - (next_update - AUDIO_UPDATE_MS)
+    scope:start_timer(self.audio_timer, CLOCK_READ_MS)
+    local armed = tonumber(scope.state:timer(scope:key(self.audio_timer)))
+    return deadline - (armed - CLOCK_READ_MS)
+end
+
+--- Tone position for the stages left until the flag leaves.
+---@param stages integer Five-second stages left, the running one included.
+---@param total_seconds number The whole wait from the flag's appearance until it leaves.
+local function tone_position(stages, total_seconds)
+    local seconds = stages * STAGE_SECONDS
+    if seconds > FINAL_SECONDS and total_seconds > FINAL_SECONDS
+        and total_seconds < AUTHORED_SECONDS then
+        seconds = FINAL_SECONDS + (seconds - FINAL_SECONDS)
+            * (AUTHORED_SECONDS - FINAL_SECONDS) / (total_seconds - FINAL_SECONDS)
+    end
+    return math.max(AUDIO_MIN_POSITION, 1 - seconds / AUTHORED_SECONDS)
 end
 
 --- Shows the countdown row and starts the tone at the time left. An audience-free site names no
@@ -195,7 +223,7 @@ end
 --- the player, which waits for the walk from the flag into the rally volume.
 function Rally:show(context, scope)
     local definition = self.definition
-    local remaining = self:remaining_ms(scope)
+    local remaining = self:until_ms(scope, self.stop_timer)
     local total = self:total(scope)
     local seconds = 0
     if remaining ~= nil and remaining > 0 then
@@ -218,7 +246,7 @@ function Rally:show(context, scope)
     self:update_audio(context, scope)
 end
 
---- Stops the flag tone at countdown zero or before the flag leaves.
+--- Stops the flag tone and its timers.
 function Rally:stop_audio(context, scope)
     scope:cancel_timer(self.audio_timer)
     scope:cancel_timer(self.stop_timer)
@@ -227,19 +255,41 @@ function Rally:stop_audio(context, scope)
     end
 end
 
---- Maps host time to countdown progress; the stop timer owns expiry.
+--- Sets the tone's stage for the time left until the flag leaves and arms the next stage. The
+--- tone runs through the lingering second after zero, as in the recording.
 function Rally:update_audio(context, scope)
-    local remaining = self:remaining_ms(scope)
+    local remaining = self:until_ms(scope, self.leave_timer)
     if remaining == nil or remaining <= 0 then
-        self:stop_audio(context, scope)
+        scope:cancel_timer(self.audio_timer)
         return
     end
-    -- Compress the final audio ramp without moving the HUD or event deadline.
-    local ramp_ms = AUDIO_ACCELERATE_SECONDS * MS_PER_SECOND
-    remaining = remaining * math.min(1, remaining / ramp_ms)
-    local position = 1 - remaining / (self:total(scope) * MS_PER_SECOND)
-    position = math.max(AUDIO_MIN_POSITION, math.min(AUDIO_MAX_POSITION, position))
-    devices.set_position(context, scope, self.definition.device, self.audio_key, position, true)
+    local stage_ms = STAGE_SECONDS * MS_PER_SECOND
+    local stages = math.ceil(remaining / stage_ms)
+    local total_seconds = self:total(scope) + LINGER_MS / MS_PER_SECOND
+    devices.set_position(context, scope, self.definition.device, self.audio_key,
+        tone_position(stages, total_seconds), true)
+    if stages > 1 then
+        scope:start_timer(self.audio_timer, remaining - (stages - 1) * stage_ms + STAGE_MARGIN_MS)
+    else
+        scope:cancel_timer(self.audio_timer)
+    end
+end
+
+--- Completes a shown countdown row.
+local function complete_row(self, context, scope)
+    local definition = self.definition
+    if definition.directive ~= nil and self:used(scope) ~= nil then
+        context:slot(definition.sensor):set_directive{
+            directive = definition.directive, state = presentation.directive.complete,
+            active = false, settled = false, audience = self:row_audience(context)}
+    end
+end
+
+--- Silences the tone and takes the flag object away.
+local function remove(self, context, scope)
+    self:stop_audio(context, scope)
+    scope:clear_variable(self.fold_key)
+    context:activate_objects{slots = {self.definition.flag}, active = false}
 end
 
 --- Records the first flag user and shows the running countdown; later uses change nothing.
@@ -263,26 +313,38 @@ function Rally:on_interaction(context, scope, event)
     return self:use(context, scope, tostring(event.owner_key or "unknown"))
 end
 
---- Services the tone timers; returns true when the countdown deadline elapsed.
+--- Services the tone timer; returns true when the flag is due to leave. The stop timer only
+--- marks zero for the row and the launcher.
 function Rally:on_timer(context, scope, name)
-    if name == self.stop_timer then
-        self:stop_audio(context, scope)
-    elseif name == self.audio_timer then
-        self:update_audio(context, scope)
+    if name == self.audio_timer then
+        if scope:variable(self.fold_key) == true then
+            remove(self, context, scope)
+        else
+            self:update_audio(context, scope)
+        end
     end
     return name == self.leave_timer
 end
 
---- Withdraws the flag and completes a shown countdown row.
+--- Ends the countdown and completes a shown row. A used flag plays its authored ending and is
+--- taken away after it; an unused flag was silent and goes at once.
 function Rally:leave(context, scope)
-    self:stop_audio(context, scope)
-    local definition = self.definition
-    context:activate_objects{slots = {definition.flag}, active = false}
-    if definition.directive ~= nil and self:used(scope) ~= nil then
-        context:slot(definition.sensor):set_directive{
-            directive = definition.directive, state = presentation.directive.complete,
-            active = false, settled = false, audience = self:row_audience(context)}
+    if self:used(scope) == nil then
+        remove(self, context, scope)
+        return
     end
+    scope:cancel_timer(self.stop_timer)
+    devices.set_position(context, scope, self.definition.device, self.audio_key,
+        AUDIO_END_POSITION, true)
+    scope:set_variable(self.fold_key, true)
+    scope:start_timer(self.audio_timer, FOLD_MS)
+    complete_row(self, context, scope)
+end
+
+--- Takes a standing flag away at once, without its ending, and completes a shown row.
+function Rally:withdraw(context, scope)
+    remove(self, context, scope)
+    complete_row(self, context, scope)
 end
 
 --- Clears the countdown row, retaining membership only when active play uses this audience.
@@ -290,7 +352,11 @@ end
 function Rally:close(context, scope, keep_audience)
     scope:cancel_timer(self.leave_timer)
     scope:clear_variable(self.total_key)
-    self:stop_audio(context, scope)
+    if scope:variable(self.fold_key) == true then
+        remove(self, context, scope)
+    else
+        self:stop_audio(context, scope)
+    end
     local definition = self.definition
     context:slot(definition.sensor):clear_directives()
     if not keep_audience and definition.directive ~= nil and self:used(scope) ~= nil then
