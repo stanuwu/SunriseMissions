@@ -12,8 +12,9 @@ c.WAVE_COUNT_KEY, c.WAVE_LIVE_KEY, c.DEAD_KEY, c.POD_GROUP_KEY = "c.n", "c.w", "
 c.SNIPER_KEY, c.THRESHER_KEY, c.VALUS_KEY, c.GUARD_KEY = "c.sn", "c.th", "c.vl", "c.g"
 -- Spawn generation last counted as ended; a late report of it changes nothing.
 c.ENDED_WAVE_KEY, c.ENDED_THRESHER_KEY, c.ENDED_VALUS_KEY = "c.eg", "c.et", "c.ev"
--- Set between the Thresher's entrance and its descent; the flag survives a reload in between.
-c.THRESHER_DESCENT_KEY = "c.td"
+-- The next leg of the Thresher's circuit, set from its entrance until it is shot down: odd legs
+-- descend, even legs climb. Retained so a reload keeps the circuit going.
+c.THRESHER_LEG_KEY = "c.td"
 c.OCCUPANTS_KEY = "c.o"
 c.CAPTURED_KEY = "c.cp"
 
@@ -29,8 +30,9 @@ c.LAND_AFTER_ALERT_MS, c.START_AFTER_LAND_MS = 11000, 10000
 c.LANDER_MINING, c.LANDER_WITHDRAWAL, c.LANDER_DESTRUCTION = 0.05, 0.10, 0.20
 
 -- Carrier graph: arrival and the second effect last 10 seconds. Departure removes the ship
--- after 13.9 seconds. The bombardment assignment is reconstructed.
-c.SHIP_ARRIVAL, c.SHIP_BOMBARDMENT, c.SHIP_DEPARTURE = 0.10, 0.20, 0.30
+-- after 13.9 seconds. Reconstructed: the second effect is the red beam the lander rides down. The
+-- 16 November recording shows that beam for ten seconds from the moment the lander starts down.
+c.SHIP_ARRIVAL, c.SHIP_DROP_BEAM, c.SHIP_DEPARTURE = 0.10, 0.20, 0.30
 
 -- Schedule one bombardment with the first authored barrage group.
 c.BOMBARD_MS = 8000
@@ -58,8 +60,11 @@ c.WAVE_ORDER = {EASY_1, EASY_2, MEDIUM_1, MEDIUM_2, EASY_1, EASY_2,
 
 -- Reconstructed delay from the join to the Thresher.
 c.THRESHER_MS = 55000
--- The entrance ability took six seconds in the 16 November run; the descent is ordered after it.
-c.THRESHER_DESCENT_MS = 8000
+-- The entrance ability took six seconds in the 16 November run; the first leg is ordered after.
+c.THRESHER_ENTRANCE_MS = 8000
+-- The descent took ten seconds in that run and the ascent is as long; a leg is ordered after the
+-- last has ended and the craft has crossed to the next curve. The recorded Thresher never stops.
+c.THRESHER_LEG_MS = 12000
 
 -- Heroic starts a fresh clock for the Valus.
 c.HEROIC_SECONDS = 180

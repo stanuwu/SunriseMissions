@@ -126,10 +126,12 @@ function site.bind(mission, placement)
         threshers = threshers,
         -- Authored flight of the Thresher, read from the placements' own points: the entrance is
         -- one point some 125 m above the site and 160 m from it, where the downward curve starts;
-        -- that curve ends at the site's height beside the drill. The upward curve climbs away and
-        -- the exit is one point under the map.
+        -- that curve ends at the site's height beside the drill. The upward curve starts across
+        -- the drill from there and climbs back to within 17 to 68 m of the entrance, so the two
+        -- curves close a circuit of about 1.4 km. The exit is one point under the map.
         thresher_entrance = slot("MOSQUITO_ENTRANCE_PATH"),
         thresher_descent = slot("MOSQUITO_DOWNWARDS_PATH"),
+        thresher_ascent = slot("MOSQUITO_UPWARDS_PATH"),
         thresher_exit = slot("MOSQUITO_EXIT_PATH"),
         artillery = artillery,
         sniper = unit("PSION_SNIPER_SQUAD", sniper_pod, nil, task("SNIPER_OBJECTIVE")),
