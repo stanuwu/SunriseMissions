@@ -66,8 +66,10 @@ function site_names.directive(mission, title, name_hash, sensor, element)
     local key, repeats = title, 0
     while true do
         local row = mission.Directive[key]
-        if row == nil then break end
-        if row.sensor == sensor and row.name_hash == name_hash and row.element == (element or 0) then
+        -- A title every sensor repeats may have no bare key; the hashed keys are dense.
+        if row == nil and repeats > 0 then break end
+        if row ~= nil and row.sensor == sensor and row.name_hash == name_hash
+            and row.element == (element or 0) then
             return row
         end
         repeats = repeats + 1

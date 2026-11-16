@@ -96,7 +96,10 @@ function module.new(definition)
         -- After the flag leaves: ketch with the event row, then the alert.
         hooks.incoming = {
             {delay_ms = c.KETCH_AFTER_LEAVE_MS, run = function(context, scope)
-                context:activate_objects{slots = {definition.ketch}, active = true}
+                -- A site without the intro Ketch prefab opens with the sequence alone.
+                if definition.ketch ~= nil then
+                    context:activate_objects{slots = {definition.ketch}, active = true}
+                end
                 context:slot(definition.sequences.intro):play_sequence{}
                 ev:show_incoming(context, scope, presentation.directive.enter)
             end},

@@ -7,6 +7,7 @@ local glimmer = require("lib.public_events.glimmer_extraction.encounter")
 local glimmer_site = require("lib.public_events.glimmer_extraction.site")
 local ether = require("lib.public_events.ether_resupply.encounter")
 local weapons = require("lib.public_events.weapons_exchange.encounter")
+local site_names = require("lib.public_events.site_names")
 
 local events = {}
 
@@ -168,8 +169,22 @@ local function bind_ether_resupply(mission)
     }
 end
 
--- The prefab tree of this registry; its flag stands 7.6 m from the site's props.
-local TANK, TANK_TAG, TANK_RALLY = "PF_EVENT_SPIDER_TANK_", "_80BE2ECB", "80BE26FE"
+-- Weapons Exchange placements. Each names its object, the three unnamed volumes beside it and
+-- the rally prefab nearest it; the first Outskirts flag stands 7.6 m from the site's props.
+-- Sunken Isles authors a sky battle instead of the intro Ketch prefab.
+local EXCHANGES = {
+    {region = 24, tag = "80BE2ECB", volumes = {"SLOT_00D5", "SLOT_00E7", "SLOT_0104"},
+        rally = "80BE26FE", rally_volume = "SPAWNOVERRIDEVOLUME"},
+    {region = 24, tag = "80BE3148", volumes = {"SLOT_00D5", "SLOT_00E7", "SLOT_0104"},
+        rally = "80BE26EE", rally_volume = "SPAWNOVERRIDEVOLUME"},
+    {region = 312, tag = "80BE18EB", volumes = {"SLOT_00D1", "SLOT_00D8", "SLOT_0100"},
+        rally = "80BE0B1A"},
+}
+local TANK_ROOT = "PF_EVENT_SPIDER_TANK"
+-- Rows of the directive sensor by title and name hash.
+local EXCHANGE_ROW = {"DISRUPT_WEAPONS_EXCHANGE", 0x82A993F5}
+local WALKER_ROW = {"DESTROY_THE_ARSENAL_WALKER", 0xFA872386}
+local WALKERS_ROW = {"DEMOLISH_THE_WALKERS", 0x78D5E31A}
 -- Authored counts: three cache arrays, each with two receptacles and three barrier shields.
 local ARRAY_COUNT, RECEPTACLE_COUNT, SHIELD_COUNT = 3, 2, 3
 -- Roster order: opening squads, Walker drop, heroic drop, heroic escort. The cache guards use the
@@ -179,12 +194,13 @@ local TANK_ROSTER = {"SQ_INITIAL_SCORCH_CAPTAIN", "SQ_TANK_FODDER_CACHE_MEDIUM_1
     "SQ_TANK", "SQ_TANK_MINIONS", "SQ_DROPSHIP_HEROIC", "SQ_HEROIC_TANK",
     "SQ_TANK_MINIONS_HEROIC", "SQ_HEROIC_REGULAR", "SQ_HEROIC_ANCHOR"}
 
---- Binds the region 24 Weapons Exchange site.
-local function bind_weapons_exchange(mission)
+--- Binds one Weapons Exchange placement. The definition leaves the map sensor out, as the
+--- family sends it no state; it is returned beside the definition for the zone to attach by.
+local function bind_weapons_exchange(mission, placement)
     local Slot, Squad = mission.Slot, mission.Squad
-    local function slot(stem)
-        return lib.one(Slot[TANK .. stem .. TANK_TAG], "weapons exchange slot " .. stem)
-    end
+    local object = site_names.object(mission, placement.tag, TANK_ROOT)
+    local function slot(stem) return Slot[object.prefab(stem)] end
+    local function zone_slot(stem) return Slot[object.zone(stem)] end
     local function slots(stems)
         local list = {}
         for _, stem in ipairs(stems) do list[#list + 1] = slot(stem) end
@@ -193,7 +209,7 @@ local function bind_weapons_exchange(mission)
     local roster = {}
     for index, stem in ipairs(TANK_ROSTER) do
         roster[index] = {slot = slot(stem),
-            squad = lib.one(Squad[TANK .. stem .. TANK_TAG], "weapons squad " .. stem)}
+            squad = lib.one(Squad[object.prefab(stem)], "weapons squad " .. stem)}
     end
     local arrays = {}
     for index = 0, ARRAY_COUNT - 1 do
@@ -218,18 +234,14 @@ local function bind_weapons_exchange(mission)
     local HEROIC_CARRIER, HEROIC_WALKER, HEROIC_MINIONS = 8, 9, 10
     local HEROIC_ESCORT_1, HEROIC_ESCORT_2 = 11, 12
     local NORMAL_DROP, HEROIC_DROP = 1, 2
-    local directive_sensor = lib.one(Slot["M_DIRECTIVE_SENSOR" .. TANK_TAG], "directive sensor")
+    local directive_sensor = zone_slot("M_DIRECTIVE_SENSOR")
     local function row(name)
-        local directive = lib.one(mission.Directive[name], "weapons exchange directive " .. name)
-        assert(directive.sensor == directive_sensor,
-            "directive belongs to another sensor: " .. directive.id)
-        return directive
+        return site_names.directive(mission, name[1], name[2], directive_sensor)
     end
-    local rally_tag = "_" .. TANK_RALLY
-    local rally_sensor = lib.one(Slot["M_DIRECTIVE_SENSOR" .. rally_tag], "rally directive sensor")
-    local rally_row = lib.one(rally.find_directive(mission, rally_sensor),
-        "rally directive")
-    assert(rally_row.sensor == rally_sensor, "rally directive belongs to another sensor")
+    local ketch = object.find_zone("KETCH_INTRO_PREFAB_1_O_KETCH_INTRO")
+    local navpoint = object.find_zone("LOCATION_POINT")
+    local volumes = {slot("EVENT_SPIDER_TANK_COMM_ARRAY_1_TV_WEAPON_CACHE")}
+    for _, stem in ipairs(placement.volumes) do volumes[#volumes + 1] = zone_slot(stem) end
     return {
         roster = roster,
         opening = {CAPTAIN, CACHE_1, CACHE_2, CACHE_3},
@@ -247,38 +259,24 @@ local function bind_weapons_exchange(mission)
         heroic_drop = HEROIC_DROP,
         heroic_escort = {HEROIC_ESCORT_1, HEROIC_ESCORT_2},
         arrays = arrays,
-        ketch = lib.one(Slot["KETCH_INTRO_PREFAB_1_O_KETCH_INTRO" .. TANK_TAG], "ketch"),
+        ketch = ketch ~= nil and Slot[ketch] or nil,
         sequences = {
             intro = slot("SEQ_INTRO_BEHAVIOR"), active = slot("SEQ_EVENT_ACTIVE_BEHAVIOR"),
             inbound = slot("SEQ_SUPER_SPIDER_TANK_INBOUND"), heroic = slot("SEQ_HEROIC_TRIGGERED"),
         },
         chest = slot("CHEST_PREFAB_CHEST_TIER0_OBJECT"),
-        navpoint = lib.one(Slot["LOCATION_POINT" .. TANK_TAG], "location point"),
+        navpoint = navpoint ~= nil and Slot[navpoint] or nil,
         directive_sensor = directive_sensor,
-        directive = row("DISRUPT_WEAPONS_EXCHANGE_82A993F5"),
-        walker_directive = row("DESTROY_THE_ARSENAL_WALKER_FA872386"),
-        heroic_directive = row("DEMOLISH_THE_WALKERS_78D5E31A"),
-        engagement = lib.one(Slot["M_ENGAGEMENT_SENSOR" .. TANK_TAG], "engagement sensor"),
+        directive = row(EXCHANGE_ROW),
+        walker_directive = row(WALKER_ROW),
+        heroic_directive = row(WALKERS_ROW),
+        engagement = zone_slot("M_ENGAGEMENT_SENSOR"),
         -- Content names no engagement volume; the four authored volumes are the event area.
-        engagement_volumes = {slot("EVENT_SPIDER_TANK_COMM_ARRAY_1_TV_WEAPON_CACHE"),
-            lib.one(Slot["SLOT_00D5" .. TANK_TAG], "volume 00D5"),
-            lib.one(Slot["SLOT_00E7" .. TANK_TAG], "volume 00E7"),
-            lib.one(Slot["SLOT_0104" .. TANK_TAG], "volume 0104")},
-        dialog = lib.one(Slot["M_DIALOG_SENSOR" .. TANK_TAG], "dialog sensor"),
-        music = lib.one(Slot["M_MUSIC_SENSOR" .. TANK_TAG], "music sensor"),
-        rally = {
-            flag = lib.one(Slot["PF_PUBLIC_EVENT_RALLY_POINT_RALLY_FLAG" .. rally_tag],
-                "rally flag"),
-            device = lib.one(Slot["PF_PUBLIC_EVENT_RALLY_POINT_RALLY_FLAG_DEVICE" .. rally_tag],
-                "flag device"),
-            sensor = rally_sensor,
-            engagement = lib.one(Slot["M_ENGAGEMENT_SENSOR" .. rally_tag],
-                "rally engagement sensor"),
-            volume = lib.one(Slot["SPAWNOVERRIDEVOLUME" .. rally_tag], "rally volume"),
-            directive = rally_row,
-            incident_target = rally.FLAG_INCIDENT,
-        },
-    }
+        engagement_volumes = volumes,
+        dialog = zone_slot("M_DIALOG_SENSOR"),
+        music = zone_slot("M_MUSIC_SENSOR"),
+        rally = rally.bind_object(mission, placement.rally, placement.rally_volume),
+    }, zone_slot("M_PUBLIC_EVENT_SENSOR")
 end
 
 --- Builds the Winding Cove Cabal Excavation handler.
@@ -340,9 +338,16 @@ function events.injection_rig(mission)
     return injection_rig.new(rig_site.bind(mission, RIG_SITE))
 end
 
---- Builds the region 24 Weapons Exchange handler.
-function events.weapons_exchange(mission)
-    return weapons.new(bind_weapons_exchange(mission))
+--- Builds the Weapons Exchange handler of every placement, with its region and sensor.
+---@return table[] sites {region, sensor, handler} in the order of EXCHANGES.
+function events.weapons_exchanges(mission)
+    local sites = {}
+    for index, placement in ipairs(EXCHANGES) do
+        local definition, sensor = bind_weapons_exchange(mission, placement)
+        sites[index] = {region = placement.region, sensor = sensor,
+            handler = weapons.new(definition)}
+    end
+    return sites
 end
 
 return events
