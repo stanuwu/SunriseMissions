@@ -484,6 +484,36 @@ local function report_site(scope, site)
     return status
 end
 
+-- Stops the site that runs here, in any phase from rally to chest. A family's abort cancels its
+-- timers, retires its squads, withdraws the flag and queues the final cleanup of its objects, rows,
+-- music and audience; an unbound site retires its squads and chest.
+local function stop_site(context, scope, zone, site, cooldown, respawn)
+    if site.handler then
+        site.handler.abort(context, scope, site)
+    else
+        retire_units(context, site.squads)
+        set_objects(context, site.chest, false)
+    end
+    finish_site(scope, zone, site, cooldown, respawn)
+    report_site(scope, nil)
+end
+
+-- The launcher's site zero ends the event here and returns the zone to its schedule. The request
+-- stays open until the cleanup settles, so the overlay shows the end in progress, and the
+-- occurrence that was running or arriving is spent: only the next one starts.
+local function end_event(context, scope, zone, site, cleanup_pending, cooldown, respawn, request)
+    if site and scope:variable(site.phase_key) == PHASE_RUNNING then
+        hold_scheduled_slots(context, scope, zone)
+        stop_site(context, scope, zone, site, cooldown, respawn)
+        return true
+    end
+    if cleanup_pending then return true end
+    scope:clear_variable(NEXT_SITE_KEY)
+    scope:clear_variable(MANUAL_KEY)
+    scope:set_variable("event_request_seen", request.serial)
+    return false
+end
+
 -- Returns true while the launcher owns this service tick. The existing abort and cleanup run
 -- before the new arrival, so replacing a rally cannot leave its flag or squads in the next one.
 local function service_launcher(context, scope, zone, site, cleanup_pending, cooldown, respawn)
@@ -494,31 +524,23 @@ local function service_launcher(context, scope, zone, site, cleanup_pending, coo
     local request = context.public_event_request
     if not request or request.region ~= zone.region
         or request.serial == scope:variable("event_request_seen") then return manual end
-    if request.site == 0 and not manual then
-        scope:set_variable("event_request_seen", request.serial)
-        return false
+    if request.site == 0 then
+        return end_event(context, scope, zone, site, cleanup_pending, cooldown, respawn, request)
     end
     local wanted = zone.events[request.site]
-    if request.site ~= 0 and (not wanted or not wanted.handler or not wanted.handler.name) then
+    if not wanted or not wanted.handler or not wanted.handler.name then
         scope:set_variable("event_request_seen", request.serial)
         return manual
     end
-    if wanted then hold_scheduled_slots(context, scope, zone) end
+    hold_scheduled_slots(context, scope, zone)
+    -- A start waits for a finishing event's chest; only an end request cuts that short.
     if cleanup_pending or phase == "Finishing" then return true end
     if site and scope:variable(site.phase_key) == PHASE_RUNNING then
-        if site.handler then
-            site.handler.abort(context, scope, site)
-        else
-            retire_units(context, site.squads)
-            set_objects(context, site.chest, false)
-        end
-        finish_site(scope, zone, site, cooldown, respawn)
-        report_site(scope, nil)
+        stop_site(context, scope, zone, site, cooldown, respawn)
         return true
     end
     scope:clear_variable(NEXT_SITE_KEY)
     scope:set_variable("event_request_seen", request.serial)
-    if request.site == 0 then return false end
     local seconds = request.rally_seconds
     local arrival = seconds == 0 and {active = true} or {rally_seconds = seconds, rally_total = seconds}
     scope:set_variable(MANUAL_KEY, true)
