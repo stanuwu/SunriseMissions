@@ -110,6 +110,7 @@ local function number_zone(zone)
         site.phase_key = "p" .. index
         site.cleared_key = "k" .. index
         site.wake_key = "w" .. index
+        site.slot_key = "slot" .. index
     end
 end
 
@@ -149,15 +150,35 @@ local function scheduled_ordinal(zone, site_key)
     return nil
 end
 
+-- A scheduled occurrence gets one turn in this zone. Its next occurrence has a different finish.
+local function site_plan(context, scope, site)
+    if context.host_unix_seconds == nil or not site.handler or not site.handler.schedule then
+        return nil
+    end
+    local plan = site.handler.schedule(context)
+    local finish = plan and plan.occurrence and plan.occurrence.finish
+    if finish and plan.arrival and finish == scope:variable(site.slot_key) then
+        return {wait_seconds = math.max(1, finish - context.host_unix_seconds)}
+    end
+    return plan, finish
+end
+
+-- A running event keeps the zone through cleanup. Slots that open during its turn yield to it.
+local function hold_scheduled_slots(context, scope, zone)
+    for _, site in ipairs(zone.events) do
+        local plan, finish = site_plan(context, scope, site)
+        if finish and plan.arrival then
+            scope:set_variable(site.slot_key, finish)
+        end
+    end
+end
+
 -- The ordinal of a scheduled site whose slot has arrived: the rally lead or the active window.
 local function arriving_site(context, scope, zone)
-    if context.host_unix_seconds == nil then return nil end
     for ordinal, site in ipairs(zone.events) do
-        if site.handler ~= nil and site.handler.schedule ~= nil then
-            local plan = site.handler.schedule(context)
-            if plan ~= nil and plan.arrival ~= nil then
-                return ordinal
-            end
+        local plan = site_plan(context, scope, site)
+        if plan ~= nil and plan.arrival ~= nil then
+            return ordinal
         end
     end
     return nil
@@ -216,7 +237,7 @@ end
 local function start_site(context, scope, zone, site, arrival)
     if arrival == nil and site.handler ~= nil and site.handler.schedule ~= nil then
         local now = context.host_unix_seconds
-        local plan = now ~= nil and site.handler.schedule(context) or nil
+        local plan, finish = site_plan(context, scope, site)
         if plan ~= nil and plan.wait_seconds ~= nil then
             local picked = scheduled_ordinal(zone, plan.selected_site)
             if picked ~= nil and zone.events[picked] ~= site then
@@ -232,6 +253,7 @@ local function start_site(context, scope, zone, site, arrival)
             return
         end
         arrival = plan ~= nil and plan.arrival or nil
+        if arrival and finish then scope:set_variable(site.slot_key, finish) end
     end
     scope:clear_variable(site.wake_key)
     scope:set_variable(site.phase_key, PHASE_RUNNING)
@@ -481,6 +503,7 @@ local function service_launcher(context, scope, zone, site, cleanup_pending, coo
         scope:set_variable("event_request_seen", request.serial)
         return manual
     end
+    if wanted then hold_scheduled_slots(context, scope, zone) end
     if cleanup_pending or phase == "Finishing" then return true end
     if site and scope:variable(site.phase_key) == PHASE_RUNNING then
         if site.handler then
@@ -526,6 +549,10 @@ local function service_zone(context, scope, zone, cooldown, respawn)
             scope:clear_variable(CLEANUP_WAIT_KEY)
         end
     end
+    if scope:variable(MANUAL_KEY)
+        or (site and site.handler and scope:variable(site.phase_key) == PHASE_RUNNING) then
+        hold_scheduled_slots(context, scope, zone)
+    end
     if service_launcher(context, scope, zone, site, cleanup_pending, cooldown, respawn)
         or cleanup_pending then return end
     local next_site = scope:variable(NEXT_SITE_KEY)
@@ -539,10 +566,8 @@ local function service_zone(context, scope, zone, cooldown, respawn)
         end
         return
     end
-    -- A scheduled slot that is here, within the lead or active, takes the zone from a cooling site
-    -- or an unscheduled one at once. A running scheduled site finishes first.
-    if site == nil or site.handler == nil or site.handler.schedule == nil
-        or scope:variable(site.phase_key) ~= PHASE_RUNNING then
+    -- An arriving slot can take a cooling or unbound site. A running family finishes first.
+    if site == nil or site.handler == nil or scope:variable(site.phase_key) ~= PHASE_RUNNING then
         local ordinal = arriving_site(context, scope, zone)
         if ordinal ~= nil then
             if site ~= nil then
@@ -648,6 +673,7 @@ function freeroam.new(definition)
                 local site = active_site(scope, zone)
                 if site ~= nil and site.handler ~= nil and site.handler.abort ~= nil
                     and scope:variable(site.phase_key) == PHASE_RUNNING then
+                    if not scope:variable(MANUAL_KEY) then scope:clear_variable(site.slot_key) end
                     site.handler.abort(context, scope, site)
                     finish_site(scope, zone, site, cooldown_ticks, respawn_ticks)
                 end
