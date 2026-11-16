@@ -34,7 +34,10 @@ public_events.attach(zones, RIG_SITE_REGION, mission.Slot.M_PUBLIC_EVENT_SENSOR_
 
 return freeroam.new{zones = zones, sectors = sectors(mission, freeroam), event_locations = {
     [DRILL_SITE_REGION] = "EDZ / Winding Cove",
-    [EXTRACTION_REGION] = "EDZ / Region " .. EXTRACTION_REGION,
-    [ETHER_SITE_REGION] = "EDZ / Region " .. ETHER_SITE_REGION,
-    [RIG_SITE_REGION] = "EDZ / Region " .. RIG_SITE_REGION,
+    [EXTRACTION_REGION] = "EDZ / Firebase Hades",
+    [ETHER_SITE_REGION] = "EDZ / Outskirts",
+    [RIG_SITE_REGION] = "EDZ / Sunken Isles",
+    [280] = "EDZ / The Gulch",
+    [408] = "EDZ / Trostland",
+    [448] = "EDZ / The Sludge",
 }}

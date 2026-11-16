@@ -15,5 +15,17 @@ local zones = public_events.attach(content(mission, freeroam), WATCHERS_GRAVE_RE
 public_events.attach(zones, WATCHERS_GRAVE_REGION,
     mission.Slot.M_PUBLIC_EVENT_SENSOR_80C03459, events.watchers_grave_ether(mission), false)
 
-return freeroam.new{zones = zones, sectors = sectors(mission, freeroam),
-    event_locations = {[WATCHERS_GRAVE_REGION] = "Nessus / Watcher's Grave"}}
+-- Each other area has one Spire placement; it leads its zone's rotation.
+for _, placed in ipairs(events.spires(mission)) do
+    public_events.attach(zones, placed.region, placed.sensor, placed.handler, true)
+end
+
+return freeroam.new{zones = zones, sectors = sectors(mission, freeroam), event_locations = {
+    [WATCHERS_GRAVE_REGION] = "Nessus / Watcher's Grave",
+    [24] = "Nessus / Exodus Black",
+    [64] = "Nessus / Hallows",
+    [88] = "Nessus / The Cistern",
+    [104] = "Nessus / Artifact's Edge",
+    [240] = "Nessus / Glade of Echoes",
+    [296] = "Nessus / The Tangle",
+}}

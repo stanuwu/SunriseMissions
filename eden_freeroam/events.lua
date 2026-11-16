@@ -27,16 +27,13 @@ local GROUP_VOLUMES = {[0] = "BLIGHT_GROUPS_0_ENGAGEMENT_TRIGGER_VOLUME",
 -- delay is cue 1's authored window.
 local JOIN_LINES = {first = 1, second = 0, delay_ms = 8292}
 
---- Generated names of the Giant's Scar Spire. This prefab authors no location point, so the
---- marker uses its block location. The rally pairing is reconstructed from volume overlap.
+--- The Giant's Scar Spire. This placement authors no location point, so the marker uses its
+--- block location. The rally pairing is reconstructed from volume overlap.
 local GIANTS_SCAR = {
-    prefab = function(stem) return "EVENT_VEXBLOCK_1_" .. stem end,
-    zone = function(stem) return stem .. "_80C37C70" end,
-    cover = function(index) return "EVENT_VEXBLOCK_1_O_VEX_COV_" .. index end,
+    tag = "80C37C70", root = "EVENT_VEXBLOCK_1",
     area = {"SLOT_0096", "SLOT_00D1"},
-    navpoint = "EVENT_VEXBLOCK_1_PF_VEXBLOCK_AP_VEX_BLOCK",
-    rally_key = "_80C374B7",
-    rally_volume = "RALLY_POINT_SPAWN_OVERRIDE_VEX_BLOCK",
+    navpoint = "PF_VEXBLOCK_AP_VEX_BLOCK",
+    rally = "80C374B7", rally_volume = "RALLY_POINT_SPAWN_OVERRIDE_VEX_BLOCK",
 }
 
 --- Binds the region 136 Taken Blight.

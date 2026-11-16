@@ -13,14 +13,24 @@ local ETHER_SITE_KEY = 0xAACE558D
 -- Both entries share the one rally prefab of the zone.
 local WATCHERS_GRAVE_RALLY = "_80C03220"
 
---- Generated names of the Spire at Watcher's Grave; zone sensors omit the prefab prefix.
-local WATCHERS_GRAVE = {
-    prefab = function(stem) return "PF_VEXBLOCK01_" .. stem .. "_80C037B5" end,
-    zone = function(stem) return stem .. "_80C037B5" end,
-    cover = function(index) return "PF_VEXBLOCK01_O_VEX_COV_" .. index end,
-    area = {"SLOT_0096"},
-    navpoint = "LOCATION_POINT_80C037B5",
-    rally_key = WATCHERS_GRAVE_RALLY,
+--- The Spire at Watcher's Grave: its object, its event-centre volume and its rally prefab.
+local WATCHERS_GRAVE = {tag = "80C037B5", root = "PF_VEXBLOCK01", area = {"SLOT_0096"},
+    rally = "80C03220"}
+
+-- The other Spire placements of Nessus. Each names its object and root prefab, the one wide
+-- volume at its centre, the rally prefab nearest it and its entry in the client's schedule.
+-- The Tangle authors no flag beside its Spire; the nearest, 39 m away, is one of the extraction's.
+local SPIRES = {
+    {region = 24, tag = "80C0682F", root = "EVENT_VEXBLOCK_2", area = {"SLOT_0090"},
+        rally = "80C03CF0", site_key = 0x5C01717F},
+    {region = 64, tag = "80C07184", root = "PF_VEXBLOCK01", area = {"SLOT_0091"},
+        rally = "80C06E5C", site_key = 0x46CEE7B0},
+    {region = 240, tag = "80C09857", root = "EVENT_VEXBLOCK_1", area = {"SLOT_0099"},
+        rally = "80C0929C", rally_volume = "RALLY_POINT_SPAWN_OVERRIDE_VOLUME_VEX_BLOCK",
+        site_key = 0x8A984FD5},
+    {region = 296, tag = "80C30173", root = "EVENT_VEXBLOCK_2", area = {"SLOT_0094"},
+        rally = "80C0AA71", rally_volume = "RALLY_POINT_SPAWN_OVERRIDE_VOLUME1",
+        site_key = 0x9F6C42EE},
 }
 
 --- Starts a site on the map's own clock: rally with the seconds left, or active at once. The zone
@@ -37,6 +47,19 @@ function events.watchers_grave(mission)
     -- Preserve the native normal-state lifecycle; map nodes follow the separate schedule.
     definition.normal_event_state = true
     return scheduled(spire.new(definition), SPIRE_SITE_KEY)
+end
+
+--- Builds the Spire handler of every other placement, with the region and sensor it attaches to.
+---@return table[] sites {region, sensor, handler} in the order of SPIRES.
+function events.spires(mission)
+    local sites = {}
+    for index, placement in ipairs(SPIRES) do
+        local definition = site.bind(mission, placement)
+        definition.normal_event_state = true
+        sites[index] = {region = placement.region, sensor = definition.event_sensor,
+            handler = scheduled(spire.new(definition), placement.site_key)}
+    end
+    return sites
 end
 
 -- Generated names of the Servitor site: prefab slots carry no registry suffix, zone sensors do.

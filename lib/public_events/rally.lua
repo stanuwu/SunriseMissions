@@ -4,6 +4,7 @@
 -- the flag's appearance it made the client treat every player inside it as already rallied.
 -- Mutable state stays in the host scope.
 local lib = require("lib.mission_lib")
+local site_names = require("lib.public_events.site_names")
 local devices = require("lib.public_events.devices")
 local presentation = require("lib.public_events.presentation")
 
@@ -81,6 +82,36 @@ function rally.bind(mission, suffix, volume)
         engagement = slot("M_ENGAGEMENT_SENSOR"),
         volume = volume ~= nil and lib.one(mission.Slot[volume], "rally volume " .. volume)
             or slot("RALLY_POINT_SPAWN_OVERRIDE_VOLUME"),
+        directive = rally.find_directive(mission, sensor),
+        incident_target = rally.FLAG_INCIDENT,
+    }
+end
+
+-- Root prefabs a rally object is authored under.
+local RALLY_ROOTS = {"PF_PUBLIC_EVENT_RALLY_POINT", "EVENT_RALLY_POINT", "RALLY_POINT_PREFAB"}
+-- Stem of the spawn-override volume unless the site names its own; most sites do.
+local RALLY_VOLUME = "RALLY_POINT_SPAWN_OVERRIDE_VOLUME"
+
+--- Binds the rally prefab of one object; its root prefab and its volume's stem differ by site.
+---@param tag string Eight upper-case hex digits of the rally object's tag.
+---@param volume_stem string|nil Stem of its spawn-override volume when the site names its own.
+---@return RallyDefinition
+function rally.bind_object(mission, tag, volume_stem)
+    local Slot = mission.Slot
+    local object = site_names.object(mission, tag)
+    local flag, device
+    for _, root in ipairs(RALLY_ROOTS) do
+        flag = flag or object.find(root .. "_RALLY_FLAG")
+        device = device or object.find(root .. "_RALLY_FLAG_DEVICE")
+    end
+    local volume = object.find(volume_stem or RALLY_VOLUME)
+    local sensor = Slot[object.zone("M_DIRECTIVE_SENSOR")]
+    return {
+        flag = Slot[lib.one(flag, "rally flag of object " .. tag)],
+        device = Slot[lib.one(device, "rally flag device of object " .. tag)],
+        sensor = sensor,
+        engagement = Slot[object.zone("M_ENGAGEMENT_SENSOR")],
+        volume = Slot[lib.one(volume, "rally volume of object " .. tag)],
         directive = rally.find_directive(mission, sensor),
         incident_target = rally.FLAG_INCIDENT,
     }

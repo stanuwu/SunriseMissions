@@ -20,6 +20,6 @@ zones = public_events.attach(zones, GIANTS_SCAR_REGION,
     mission.Slot.M_PUBLIC_EVENT_SENSOR_80C37C70, events.giants_scar(mission), true)
 
 return freeroam.new{zones = zones, sectors = sectors(mission, freeroam), event_locations = {
-    [BLIGHT_SITE_REGION] = "Io / Region " .. BLIGHT_SITE_REGION,
+    [BLIGHT_SITE_REGION] = "Io / Lost Oasis",
     [GIANTS_SCAR_REGION] = "Io / Giant's Scar",
 }}
