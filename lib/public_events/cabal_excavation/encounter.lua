@@ -11,8 +11,6 @@ local module = {}
 
 -- A refused heroic-trigger squad leaves normal play running but cannot qualify for heroic.
 local THRESHER_FAILED_KEY = c.THRESHER_KEY .. ".failed"
--- Set when the runtime refuses the Thresher's flight path.
-local THRESHER_GROUNDED_KEY = c.THRESHER_KEY .. ".grounded"
 
 --- Counts players in a plate occupancy mask.
 local function occupants(mask)
@@ -71,7 +69,11 @@ function module.new(definition)
             end
             squads.retire_if_placed(context, scope, sniper, c.SNIPER_KEY)
             squads.retire_if_placed(context, scope, valus, c.VALUS_KEY)
+            -- A Thresher is an actor its program spawned: the actor is retired, then its squad.
             for index, thresher in ipairs(threshers) do
+                if scope:variable(c.THRESHER_KEY .. index) ~= nil then
+                    context:slot(thresher.pilot):retire_actor()
+                end
                 squads.retire_if_placed(context, scope, thresher, c.THRESHER_KEY .. index)
             end
             for index, guard in ipairs(heroic_waves) do
@@ -80,7 +82,6 @@ function module.new(definition)
             for index = 1, #definition.pod_groups do
                 scope:clear_variable(c.POD_GROUP_KEY .. index)
             end
-            scope:clear_variable(c.THRESHER_PATH_KEY)
         end
 
         --- Returns the live wave index that this death report names, or nil.
@@ -129,20 +130,16 @@ function module.new(definition)
             return true
         end
 
-        --- Places the first Thresher, then sends its pilot along its flight path. A refused
-        --- path leaves the Thresher at its authored anchor and is retained for the log.
+        --- Spawns the first Thresher with the program that flies it in: the entrance ability
+        --- stops it at the authored entrance point, where it fights until it is shot down.
         local function fly_thresher(context, scope)
             if scope:variable(THRESHER_FAILED_KEY .. 1) == true then return end
-            if scope:variable(c.THRESHER_PATH_KEY) == true then
-                scope:clear_variable(c.THRESHER_PATH_KEY)
-                if not squads.follow_path(context, threshers[1].pilot, definition.thresher_path) then
-                    scope:set_variable(THRESHER_GROUNDED_KEY, true)
-                end
-                return
-            end
-            place(context, scope, threshers[1], c.THRESHER_KEY .. 1)
-            scope:set_variable(c.THRESHER_PATH_KEY, true)
-            scope:start_timer(c.THRESHER_TIMER, c.THRESHER_PATH_MS)
+            local thresher = threshers[1]
+            local request = context:slot(thresher.pilot):run_atoms{spawn = true, atoms = {
+                {kind = context.sdk.atom_kinds.ability, ability = thresher.enter,
+                    target = context:slot(definition.thresher_entrance)},
+            }}
+            scope:set_variable(c.THRESHER_KEY .. 1, request.value)
         end
 
         -- After the flag leaves: carrier with the event row, alert, lander.
@@ -181,7 +178,6 @@ function module.new(definition)
                 if squads.owns_request(scope, c.THRESHER_KEY .. index, report.request_key) then
                     scope:set_variable(THRESHER_FAILED_KEY .. index, true)
                     scope:cancel_timer(c.THRESHER_TIMER)
-                    scope:clear_variable(c.THRESHER_PATH_KEY)
                     return
                 end
             end
@@ -208,8 +204,6 @@ function module.new(definition)
             scope:set_variable(c.OCCUPANTS_KEY, 0)
             scope:set_variable(c.WAVE_COUNT_KEY, 0)
             scope:clear_variable(c.CAPTURED_KEY)
-            scope:clear_variable(c.THRESHER_PATH_KEY)
-            scope:clear_variable(THRESHER_GROUNDED_KEY)
             scope:clear_variable(c.ENDED_VALUS_KEY)
             for index = 1, #threshers do
                 scope:clear_variable(THRESHER_FAILED_KEY .. index)

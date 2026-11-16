@@ -20,8 +20,12 @@ local WAVES = {
 }
 -- Heroic reinforcements share the main pods; the Valus has its own pod.
 local HEROIC_WAVES = {"HEROIC_MELEE_SQUAD", "HEROIC_HEAVY_SQUAD", "HEROIC_FODDER_SQUAD"}
--- Three authored aircraft squads; their anchors are the automatic placements, not pods.
+-- Three authored aircraft squads. Their anchors lie some 50 m under the site: a craft is not
+-- placed there, it is spawned by a program that flies it in.
 local THRESHER_COUNT = 3
+-- The flight abilities every vehicle pilot holds, as the Skiffs of the Ginger adventure use them:
+-- an entrance that stops at its command point, and a departure.
+local FLIGHT_GROUP, FLIGHT_ENTER, FLIGHT_EXIT = "GROUP_07EBF354", "KEY_052C60A0", "KEY_7D0D39A9"
 -- The first authored barrage group lands six artillery objects inside the artillery area.
 local BARRAGE, BARRAGE_SIZE = 0, 6
 -- Rows of the directive sensor by title and name hash.
@@ -77,11 +81,13 @@ function site.bind(mission, placement)
     end
     local threshers = {}
     for index = 1, THRESHER_COUNT do
+        local pilot = "MOSQUITO0" .. index .. "_SQUAD_PILOT"
+        local flight = lib.one(lib.one(mission.ActorAbility[object.prefab(pilot)],
+            "thresher abilities " .. index)[FLIGHT_GROUP], "thresher flight group " .. index)
         threshers[index] = unit("MOSQUITO0" .. index .. "_SQUAD", {})
-        threshers[index].pilot = slot("MOSQUITO0" .. index .. "_SQUAD_PILOT")
-        -- The Host sends a program only to an actor it holds a body for, so the pilot is bound
-        -- to its squad when the squad is placed; an unbound pilot's flight order is refused.
-        threshers[index].member = threshers[index].pilot
+        threshers[index].pilot = slot(pilot)
+        threshers[index].enter = lib.one(flight[FLIGHT_ENTER], "thresher entrance " .. index)
+        threshers[index].exit = lib.one(flight[FLIGHT_EXIT], "thresher departure " .. index)
     end
     local artillery = {slot("ARTILLERY_AREA_OBJECT")}
     for index = 0, BARRAGE_SIZE - 1 do
@@ -118,10 +124,9 @@ function site.bind(mission, placement)
         waves = waves,
         heroic_waves = heroic_waves,
         threshers = threshers,
-        -- The entrance and exit paths are single points, which no actor can be sent along. The
-        -- Thresher's authored anchor lies about 50 m below the site at both placements, so the
-        -- upward path is the one that brings it over the drill; the downward path takes it away.
-        thresher_path = slot("MOSQUITO_UPWARDS_PATH"),
+        -- Single command points: the targets of the entrance and departure abilities.
+        thresher_entrance = slot("MOSQUITO_ENTRANCE_PATH"),
+        thresher_exit = slot("MOSQUITO_EXIT_PATH"),
         artillery = artillery,
         sniper = unit("PSION_SNIPER_SQUAD", sniper_pod, nil, task("SNIPER_OBJECTIVE")),
         valus = unit("ULTRA_BOSS_SQUAD", ultra_pod, nil, heroic_task),

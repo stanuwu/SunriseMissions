@@ -12,8 +12,6 @@ c.WAVE_COUNT_KEY, c.WAVE_LIVE_KEY, c.DEAD_KEY, c.POD_GROUP_KEY = "c.n", "c.w", "
 c.SNIPER_KEY, c.THRESHER_KEY, c.VALUS_KEY, c.GUARD_KEY = "c.sn", "c.th", "c.vl", "c.g"
 -- Spawn generation last counted as ended; a late report of it changes nothing.
 c.ENDED_WAVE_KEY, c.ENDED_THRESHER_KEY, c.ENDED_VALUS_KEY = "c.eg", "c.et", "c.ev"
--- The Thresher's path command waits for its actor; the flag survives a reload in between.
-c.THRESHER_PATH_KEY = "c.tp"
 c.OCCUPANTS_KEY = "c.o"
 c.CAPTURED_KEY = "c.cp"
 
@@ -58,8 +56,6 @@ c.WAVE_ORDER = {EASY_1, EASY_2, MEDIUM_1, MEDIUM_2, EASY_1, EASY_2,
 
 -- Reconstructed delay from the join to the Thresher.
 c.THRESHER_MS = 55000
--- Allow the Thresher actor to spawn before issuing its flight path.
-c.THRESHER_PATH_MS = 2000
 
 -- Heroic starts a fresh clock for the Valus.
 c.HEROIC_SECONDS = 180
