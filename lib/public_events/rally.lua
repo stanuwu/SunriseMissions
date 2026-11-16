@@ -117,6 +117,18 @@ function rally.bind_object(mission, tag, volume_stem)
     }
 end
 
+--- The marker slot of a rally prefab, for an event whose own object authors none.
+---@param tag string Eight upper-case hex digits of the rally object's tag.
+---@return string slot Slot id of the rally's location point.
+function rally.location_point(mission, tag)
+    local object = site_names.object(mission, tag)
+    local point
+    for _, root in ipairs(RALLY_ROOTS) do
+        point = point or object.find(root .. "_LOCATION_POINT")
+    end
+    return mission.Slot[lib.one(point, "location point of rally object " .. tag)]
+end
+
 --- Binds one rally point; key names derive from the owning event's prefix.
 ---@param definition RallyDefinition
 ---@param prefix string Host-scope prefix of the owning event.

@@ -5,6 +5,8 @@ local spire = require("lib.public_events.spire_integration.encounter")
 local ether = require("lib.public_events.ether_resupply.encounter")
 local injection_rig = require("lib.public_events.injection_rig.encounter")
 local rig_site = require("lib.public_events.injection_rig.site")
+local cabal = require("lib.public_events.cabal_excavation.encounter")
+local cabal_site = require("lib.public_events.cabal_excavation.site")
 local glimmer = require("lib.public_events.glimmer_extraction.encounter")
 local glimmer_site = require("lib.public_events.glimmer_extraction.site")
 local schedule = require("lib.public_events.schedule")
@@ -98,6 +100,16 @@ function events.extractions(mission)
             handler = scheduled(glimmer.new(definition), placement.site_key)}
     end
     return sites
+end
+
+-- The drill site of Artifact's Edge: its object, the rally prefab 36 m from it and its
+-- schedule entry.
+local ARTIFACTS_EDGE = {tag = "80C08DD2", root = "EVENT_CABAL_DRILL_CORE_1", rally = "80C08D6A"}
+local ARTIFACTS_EDGE_SITE_KEY = 0x845566CB
+
+--- Builds the Cabal Excavation handler of Artifact's Edge.
+function events.artifacts_edge(mission)
+    return scheduled(cabal.new(cabal_site.bind(mission, ARTIFACTS_EDGE)), ARTIFACTS_EDGE_SITE_KEY)
 end
 
 --- Generated names of the rig at The Cistern. Its dialogue sensor holds the cue hashes of the

@@ -1,6 +1,7 @@
 local lib = require("lib.mission_lib")
 local rally = require("lib.public_events.rally")
 local cabal = require("lib.public_events.cabal_excavation.encounter")
+local cabal_site = require("lib.public_events.cabal_excavation.site")
 local injection_rig = require("lib.public_events.injection_rig.encounter")
 local rig_site = require("lib.public_events.injection_rig.site")
 local glimmer = require("lib.public_events.glimmer_extraction.encounter")
@@ -11,135 +12,8 @@ local site_names = require("lib.public_events.site_names")
 
 local events = {}
 
--- Eight authored cover pieces surround the drill; the two sniper covers stand apart.
-local COVER_COUNT, SNIPER_COVER_COUNT = 8, 2
--- Each wave's authored spawn rule names one pod group as its spawn points.
-local MAIN, SIDE = 1, 2
-local MAIN_PODS = {"WAVE_DROP_POD_GROUP_0", "WAVE_DROP_POD_GROUP_1", "WAVE_DROP_POD_GROUP_2"}
-local SIDE_PODS = {"WAVE_DROP_POD_SIDE_GROUP_0", "WAVE_DROP_POD_SIDE_GROUP_1",
-    "WAVE_DROP_POD_SIDE_GROUP_2"}
-local WAVES = {
-    {squad = "EASY_WAVE01_SQUAD", group = MAIN}, {squad = "EASY_WAVE02_SQUAD", group = SIDE},
-    {squad = "MEDIUM_WAVE01_SQUAD", group = SIDE}, {squad = "MEDIUM_WAVE02_SQUAD", group = MAIN},
-    {squad = "HARD_WAVE01_SQUAD", group = MAIN}, {squad = "HARD_WAVE02_SQUAD", group = MAIN},
-}
--- Heroic reinforcements share the main pods; the Valus has its own pod.
-local HEROIC_WAVES = {"HEROIC_MELEE_SQUAD", "HEROIC_HEAVY_SQUAD", "HEROIC_FODDER_SQUAD"}
--- Three authored aircraft squads; their anchors are the automatic placements, not pods.
-local THRESHER_COUNT = 3
--- The first authored barrage group lands six artillery objects inside the artillery area.
-local BARRAGE, BARRAGE_SIZE = 0, 6
-
---- Binds the Winding Cove drill site.
-local function bind_winding_cove(mission)
-    local Slot, Squad = mission.Slot, mission.Squad
-    local function slot(stem)
-        return lib.one(Slot["CABAL_DRILL_CORE_" .. stem], "cabal slot " .. stem)
-    end
-    local function slots(stems)
-        local list = {}
-        for _, stem in ipairs(stems) do list[#list + 1] = slot(stem) end
-        return list
-    end
-    --- Binds an authored objective to its first task group, the squads' main firing area.
-    local function task(stem)
-        local name = "CABAL_DRILL_CORE_" .. stem
-        return {objective = slot(stem),
-            group = lib.one(mission.TaskGroup[name], "cabal task group " .. stem).GROUP_0}
-    end
-    --- A squad with its pods and authored task; a group index names a pod group waves re-drop.
-    local function unit(stem, pods, group, assigned)
-        local result = {
-            squad = lib.one(Squad["CABAL_DRILL_CORE_" .. stem], "cabal squad " .. stem),
-            slot = slot(stem), pods = pods, group = group}
-        if assigned ~= nil then
-            result.objective, result.task_group = assigned.objective, assigned.group
-        end
-        return result
-    end
-
-    local pod_groups = {[MAIN] = slots(MAIN_PODS), [SIDE] = slots(SIDE_PODS)}
-    local drill_task, heroic_task = task("DRILL_OBJECTIVE"), task("HEROIC_OBJECTIVE")
-    local waves = {}
-    for index, wave in ipairs(WAVES) do
-        waves[index] = unit(wave.squad, pod_groups[wave.group], wave.group, drill_task)
-    end
-    local heroic_waves = {}
-    for _, stem in ipairs(HEROIC_WAVES) do
-        heroic_waves[#heroic_waves + 1] = unit(stem, pod_groups[MAIN], MAIN, heroic_task)
-    end
-    local threshers = {}
-    for index = 1, THRESHER_COUNT do
-        threshers[index] = unit("MOSQUITO0" .. index .. "_SQUAD", {})
-        threshers[index].pilot = slot("MOSQUITO0" .. index .. "_SQUAD_PILOT")
-    end
-    local artillery = {slot("ARTILLERY_AREA_OBJECT")}
-    for index = 0, BARRAGE_SIZE - 1 do
-        artillery[#artillery + 1] =
-            slot("ARTILLERY_BARRAGE_" .. BARRAGE .. "_ARTILLERY_OBJECT_" .. index)
-    end
-    local sniper_pod = slots({"SNIPER_DROP_POD_OBJECT"})
-    local ultra_pod = slots({"ULTRA_DROP_POD_OBJECT"})
-    local pods = {}
-    for _, group in ipairs({pod_groups[MAIN], pod_groups[SIDE], sniper_pod, ultra_pod}) do
-        for _, pod in ipairs(group) do pods[#pods + 1] = pod end
-    end
-    local cover = {}
-    for index = 0, COVER_COUNT - 1 do
-        cover[#cover + 1] = slot("COVER_OBJECT_" .. index)
-    end
-    for index = 0, SNIPER_COVER_COUNT - 1 do
-        cover[#cover + 1] = slot("SNIPER_COVER_OBJECT_" .. index)
-    end
-    local directive_sensor = lib.one(Slot.M_DIRECTIVE_SENSOR_80BE4370, "directive sensor")
-    local directive = lib.one(mission.Directive.CABAL_EXCAVATION, "override directive")
-    local heroic_directive = lib.one(mission.Directive.DEFEAT_EXCAVATION_VALUS, "heroic directive")
-    assert(directive.sensor == directive_sensor,
-        "override directive belongs to another sensor: " .. directive.id)
-    assert(heroic_directive.sensor == directive_sensor,
-        "heroic directive belongs to another sensor: " .. heroic_directive.id)
-    local rally_sensor = lib.one(Slot.M_DIRECTIVE_SENSOR_80BE3F78, "rally directive sensor")
-    return {
-        lander = {object = slot("CABAL_DRILL_OBJECT"), device = slot("CABAL_DRILL_DEVICE")},
-        ship = {object = slot("CABAL_ASSAULT_SHIP_OBJECT"),
-            device = slot("CABAL_ASSAULT_SHIP_DEVICE")},
-        zone = slot("COUNTDOWN_ZONE_OBJECT"),
-        ring = slot("CAPTURE_RING_OBJECT"),
-        cover = cover,
-        chest = slot("CHEST_PREFAB_CHEST_TIER0_OBJECT"),
-        intro = slot("INTRO_BEHAVIOR_SEQUENCE"),
-        active = slot("SEQ_EVENT_ACTIVE_BEHAVIOR"),
-        waves = waves,
-        heroic_waves = heroic_waves,
-        threshers = threshers,
-        thresher_path = slot("MOSQUITO_ENTRANCE_PATH"),
-        artillery = artillery,
-        sniper = unit("PSION_SNIPER_SQUAD", sniper_pod, nil, task("SNIPER_OBJECTIVE")),
-        valus = unit("ULTRA_BOSS_SQUAD", ultra_pod, nil, heroic_task),
-        pod_groups = pod_groups,
-        pods = pods,
-        directive_sensor = directive_sensor,
-        directive = directive,
-        heroic_directive = heroic_directive,
-        -- The event registry authors no type-47 slot; the rally prefab's point marks the site.
-        navpoint = lib.one(Slot.EVENT_RALLY_POINT_LOCATION_POINT, "location point"),
-        engagement = lib.one(Slot.M_ENGAGEMENT_SENSOR_80BE4370, "engagement sensor"),
-        engagement_volume = slot("ENGAGEMENT_VOLUME"),
-        dialog = lib.one(Slot.M_DIALOG_SENSOR_80BE4370, "dialog sensor"),
-        music = lib.one(Slot.M_MUSIC_SENSOR_80BE4370, "music sensor"),
-        event_sensor = lib.one(Slot.M_PUBLIC_EVENT_SENSOR_80BE4370, "public event sensor"),
-        event_area = slot("ENGAGEMENT_VOLUME"),
-        rally = {
-            flag = lib.one(Slot.EVENT_RALLY_POINT_RALLY_FLAG, "rally flag"),
-            device = lib.one(Slot.EVENT_RALLY_POINT_RALLY_FLAG_DEVICE, "flag device"),
-            sensor = rally_sensor,
-            engagement = lib.one(Slot.M_ENGAGEMENT_SENSOR_80BE3F78, "rally engagement sensor"),
-            volume = lib.one(Slot.RALLY_POINT_SPAWN_OVERRIDE_VOLUME_80BE3F78, "rally volume"),
-            directive = rally.find_directive(mission, rally_sensor),
-            incident_target = rally.FLAG_INCIDENT,
-        },
-    }
-end
+-- The Winding Cove drill site: its object and the rally prefab 24 m from it.
+local WINDING_COVE = {tag = "80BE4370", root = "CABAL_DRILL_CORE", rally = "80BE3F78"}
 
 --- Binds the region 24 Ether Resupply site.
 local function bind_ether_resupply(mission)
@@ -281,7 +155,7 @@ end
 
 --- Builds the Winding Cove Cabal Excavation handler.
 function events.winding_cove(mission)
-    return cabal.new(bind_winding_cove(mission))
+    return cabal.new(cabal_site.bind(mission, WINDING_COVE))
 end
 
 -- Glimmer Extraction placements. Each names its object and root prefab, the unnamed volumes

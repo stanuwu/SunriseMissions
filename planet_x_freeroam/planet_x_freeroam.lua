@@ -25,6 +25,11 @@ local CISTERN_REGION = 88
 public_events.attach(zones, CISTERN_REGION, mission.Slot.M_PUBLIC_EVENT_SENSOR_80C0806D,
     events.cistern_rig(mission), true)
 
+-- The drill site of Artifact's Edge is authored region 104.
+local ARTIFACTS_EDGE_REGION = 104
+public_events.attach(zones, ARTIFACTS_EDGE_REGION, mission.Slot.M_PUBLIC_EVENT_SENSOR_80C08DD2,
+    events.artifacts_edge(mission), true)
+
 -- Extractions follow the Spire or the rig in their areas' rotations.
 for _, placed in ipairs(events.extractions(mission)) do
     public_events.attach(zones, placed.region, placed.sensor, placed.handler, false)
@@ -35,7 +40,7 @@ return freeroam.new{zones = zones, sectors = sectors(mission, freeroam), event_l
     [24] = "Nessus / Exodus Black",
     [64] = "Nessus / Hallows",
     [CISTERN_REGION] = "Nessus / The Cistern",
-    [104] = "Nessus / Artifact's Edge",
+    [ARTIFACTS_EDGE_REGION] = "Nessus / Artifact's Edge",
     [240] = "Nessus / Glade of Echoes",
     [296] = "Nessus / The Tangle",
 }}
