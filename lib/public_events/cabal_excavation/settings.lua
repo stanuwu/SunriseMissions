@@ -12,9 +12,9 @@ c.WAVE_COUNT_KEY, c.WAVE_LIVE_KEY, c.DEAD_KEY, c.POD_GROUP_KEY = "c.n", "c.w", "
 c.SNIPER_KEY, c.THRESHER_KEY, c.VALUS_KEY, c.GUARD_KEY = "c.sn", "c.th", "c.vl", "c.g"
 -- Spawn generation last counted as ended; a late report of it changes nothing.
 c.ENDED_WAVE_KEY, c.ENDED_THRESHER_KEY, c.ENDED_VALUS_KEY = "c.eg", "c.et", "c.ev"
--- The next leg of the Thresher's circuit, set from its entrance until it is shot down: odd legs
--- descend, even legs climb. Retained so a reload keeps the circuit going.
-c.THRESHER_LEG_KEY = "c.td"
+-- The number of the Thresher's next lap, set from its entrance until it is shot down. Retained so
+-- a reload keeps the circuit going.
+c.THRESHER_LAP_KEY = "c.td"
 c.OCCUPANTS_KEY = "c.o"
 c.CAPTURED_KEY = "c.cp"
 
@@ -60,11 +60,11 @@ c.WAVE_ORDER = {EASY_1, EASY_2, MEDIUM_1, MEDIUM_2, EASY_1, EASY_2,
 
 -- Reconstructed delay from the join to the Thresher.
 c.THRESHER_MS = 55000
--- The entrance ability took six seconds in the 16 November run; the first leg is ordered after.
+-- The entrance ability took six seconds in the 16 November run; the first lap is ordered after.
 c.THRESHER_ENTRANCE_MS = 8000
--- The descent took ten seconds in that run and the ascent is as long; a leg is ordered after the
--- last has ended and the craft has crossed to the next curve. The recorded Thresher never stops.
-c.THRESHER_LEG_MS = 12000
+-- A lap is 1.4 km. The craft flew 177 m of curve in 9.9 s in that run, which makes a lap about
+-- 79 s; the next lap is ordered once it should have ended. The recorded Thresher never stops.
+c.THRESHER_LAP_MS = 85000
 
 -- Heroic starts a fresh clock for the Valus.
 c.HEROIC_SECONDS = 180

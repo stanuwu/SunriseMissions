@@ -23,6 +23,8 @@ local HEROIC_WAVES = {"HEROIC_MELEE_SQUAD", "HEROIC_HEAVY_SQUAD", "HEROIC_FODDER
 -- Three authored aircraft squads. Their anchors lie some 50 m under the site: a craft is not
 -- placed there, it is spawned by a program that flies it in.
 local THRESHER_COUNT = 3
+-- Last named point of the downward and of the upward curve, at both placements.
+local DESCENT_LAST_POINT, ASCENT_LAST_POINT = 5, 6
 -- The flight abilities every vehicle pilot holds, as the Skiffs of the Ginger adventure use them:
 -- an entrance that stops at its command point, and a departure.
 local FLIGHT_GROUP, FLIGHT_ENTER, FLIGHT_EXIT = "GROUP_07EBF354", "KEY_052C60A0", "KEY_7D0D39A9"
@@ -125,13 +127,16 @@ function site.bind(mission, placement)
         heroic_waves = heroic_waves,
         threshers = threshers,
         -- Authored flight of the Thresher, read from the placements' own points: the entrance is
-        -- one point some 125 m above the site and 160 m from it, where the downward curve starts;
-        -- that curve ends at the site's height beside the drill. The upward curve starts across
-        -- the drill from there and climbs back to within 17 to 68 m of the entrance, so the two
-        -- curves close a circuit of about 1.4 km. The exit is one point under the map.
+        -- one point some 125 m above the site and 160 m from it, where the downward curve starts.
+        -- That curve names six points: the second is still 116 m above the site, the last is at
+        -- the site's height 55 m from the drill. The upward curve names seven, from 43 m above
+        -- the site across the drill back up to the entrance's height, so the two curves close a
+        -- circuit of about 1.4 km. The exit is one point under the map.
         thresher_entrance = slot("MOSQUITO_ENTRANCE_PATH"),
-        thresher_descent = slot("MOSQUITO_DOWNWARDS_PATH"),
-        thresher_ascent = slot("MOSQUITO_UPWARDS_PATH"),
+        thresher_lap = {
+            {curve = slot("MOSQUITO_DOWNWARDS_PATH"), first = 1, last = DESCENT_LAST_POINT},
+            {curve = slot("MOSQUITO_UPWARDS_PATH"), first = 0, last = ASCENT_LAST_POINT},
+        },
         thresher_exit = slot("MOSQUITO_EXIT_PATH"),
         artillery = artillery,
         sniper = unit("PSION_SNIPER_SQUAD", sniper_pod, nil, task("SNIPER_OBJECTIVE")),

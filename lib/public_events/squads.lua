@@ -98,4 +98,28 @@ function squads.follow_path(context, actor, path)
     end))
 end
 
+---@class FlightLeg
+---@field curve string Slot id of an authored curve.
+---@field first integer First named point of the curve to fly to.
+---@field last integer Last named point of the curve to fly to.
+
+--- Sends one actor the Host holds through the named points of authored curves, in order, along
+--- each curve. play_actor_path always targets point 1; a curve with more points needs its points
+--- named. A refused program leaves the actor where it is and is reported, as with a path.
+---@param legs FlightLeg[]
+---@return boolean sent False when the runtime refused a point or the program.
+function squads.fly_points(context, actor, legs)
+    return (pcall(function()
+        local atoms = {}
+        for _, leg in ipairs(legs) do
+            local target = context:slot(leg.curve)
+            for point = leg.first, leg.last do
+                atoms[#atoms + 1] = {kind = context.sdk.atom_kinds.move_to, target = target,
+                    value = point, enabled = true}
+            end
+        end
+        context:slot(actor):run_atoms{atoms = atoms}
+    end))
+end
+
 return squads
