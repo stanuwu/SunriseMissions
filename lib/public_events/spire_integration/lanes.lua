@@ -40,8 +40,6 @@ function module.new(definition, ev, visuals)
             squads.append_request_keys(required, request_key(lane_index))
         end
         for lane_index, lane in ipairs(lanes) do
-            keys[#keys + 1] = c.SELECTION_REQUEST_KEY .. lane_index
-            required[#required + 1] = c.SELECTION_REQUEST_KEY .. lane_index
             for index = 1, #lane.disruptors do
                 squads.append_request_keys(keys, disruptor_key(lane_index, index))
             end
@@ -60,8 +58,7 @@ function module.new(definition, ev, visuals)
         for lane_index, lane in ipairs(lanes) do
             for _, key in ipairs({c.SACRIFICE_KEY, c.CAPTURE_KEY, c.LANE_STAGE_KEY,
                 c.BARRIER_SYNC_KEY, c.BARRIER_RUN_KEY, c.REPLACED_KEY,
-                c.CHARGE_KEY, c.CONFLUX_CHARGE_KEY, c.WAVE_COUNT_KEY,
-                c.SELECTION_REQUEST_KEY, c.SELECTION_PLACEMENT_KEY}) do
+                c.CHARGE_KEY, c.CONFLUX_CHARGE_KEY, c.WAVE_COUNT_KEY}) do
                 scope:clear_variable(key .. lane_index)
             end
             for index = 1, #lane.disruptors do
@@ -74,26 +71,11 @@ function module.new(definition, ev, visuals)
         end
     end
 
-    --- Selects the normal Goblin behavior once its current placement has staged.
-    ---@param context table Borrowed callback context; the update uses the existing squad mode.
-    ---@param scope table Retains the placement and selection request across reloads.
-    ---@param report table Effect outcome; stale and duplicate placements are ignored.
-    function lane_logic.on_effect(context, scope, report)
-        if report.request_key == nil or report.outcome ~= "transport_staged"
-            or not ev:active(scope) or ev:heroic(scope) then return end
-        local placement = report.request_key.value
-        for lane_index, lane in ipairs(lanes) do
-            if scope:variable(request_key(lane_index)) == placement
-                and scope:variable(wave_key(lane_index)) == c.WAVE_GOBLINS
-                and scope:variable(c.SELECTION_PLACEMENT_KEY .. lane_index) ~= placement then
-                local request = context:slot(lane.waves[c.WAVE_GOBLINS].slot):set_squad_key{
-                    key = c.GOBLIN_SACRIFICE_KEY, mode = context.sdk.squad_modes.replace,
-                }
-                scope:set_variable(c.SELECTION_PLACEMENT_KEY .. lane_index, placement)
-                scope:set_variable(c.SELECTION_REQUEST_KEY .. lane_index, request.value)
-                return
-            end
-        end
+    --- The Goblin wave's temperament list: normal Goblins walk in and sacrifice, heroic ones
+    --- fight, so heroic clears the list the squad keeps. Other waves leave theirs alone.
+    local function wave_temperaments(scope, lane, wave)
+        if wave ~= c.WAVE_GOBLINS then return nil end
+        return ev:heroic(scope) and {} or {lane.sacrifice}
     end
 
     --- True while any lane still has one of the big heroic squads out.
@@ -162,9 +144,8 @@ function module.new(definition, ev, visuals)
         scope:set_variable(c.WAVE_COUNT_KEY .. lane_index, count + 1)
         scope:set_variable(wave_key(lane_index), wave)
         if ev:heroic(scope) then scope:set_variable(live_key(lane_index, wave), true) end
-        scope:clear_variable(c.SELECTION_REQUEST_KEY .. lane_index)
-        scope:clear_variable(c.SELECTION_PLACEMENT_KEY .. lane_index)
-        squads.place(context, scope, lane.waves[wave], request_key(lane_index))
+        squads.place(context, scope, lane.waves[wave], request_key(lane_index),
+            wave_temperaments(scope, lane, wave))
     end
 
     --- Places the opening squad, when the policy keeps it, and the first wave of every lane.

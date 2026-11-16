@@ -21,11 +21,8 @@ c.LIVE_KEY = "e.lv"
 c.BARRIER_SYNC_KEY, c.BARRIER_RUN_KEY = "e.bs", "e.br"
 c.GUARD_KEY = "e.g"
 
--- Retain each lane's selection request and the placement it follows across reloads.
-c.SELECTION_REQUEST_KEY, c.SELECTION_PLACEMENT_KEY = "e.k", "e.kp"
-
--- Selects the normal Goblin behavior definition containing the sacrifice action.
-c.GOBLIN_SACRIFICE_KEY = 0x8ED36756
+-- Temperament of the normal Goblin behavior definition containing the sacrifice action.
+c.GOBLIN_SACRIFICE_TEMPERAMENT = 0x8ED36756
 
 -- Incident row emitted by the authored sacrifice death-pattern branch.
 c.SACRIFICE_INCIDENT = 2795

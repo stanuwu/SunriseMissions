@@ -1,6 +1,7 @@
 -- Binds one authored Spire prefab. Sites share its layout and differ in generated names.
 local lib = require("lib.mission_lib")
 local rally = require("lib.public_events.rally")
+local c = require("lib.public_events.spire_integration.settings")
 
 local site = {}
 
@@ -58,6 +59,8 @@ function site.bind(mission, ids)
         for index = 1, CHALLENGERS_PER_LANE do
             disruptors[index] = unit(prefix .. "SQ_BARRIER_CHALLENGER" .. index)
         end
+        local goblins = ids.prefab(prefix .. "SQ_GOBLINS")
+        local sacrifice = lib.one(mission.ActorTemperament[goblins], "vexblock temperaments " .. goblins)
         barrier_props[#barrier_props + 1] = slot(prefix .. "BARRIER_O_BLOCK_BARRIER")
         conflux_props[#conflux_props + 1] = slot(prefix .. "BARRIER_O_CONFLUX")
         plates[#plates + 1] = slot(prefix .. "BARRIER_O_BARRIER_CAPTURABLE")
@@ -70,6 +73,9 @@ function site.bind(mission, ids)
             waves = waves,
             disruptors = disruptors,
             objective = objective,
+            sacrifice = lib.one(
+                sacrifice[string.format("KEY_%08X", c.GOBLIN_SACRIFICE_TEMPERAMENT)],
+                "sacrifice temperament " .. goblins),
             barrier = barrier_props[#barrier_props],
             stream = slot(prefix .. "BARRIER_HO_VEX_BUG_STREAM"),
             stream_filter = slot(prefix .. "BARRIER_OF_VEX_BUG_STREAM"),

@@ -83,9 +83,10 @@ end
 
 --- Places one unit: counts, objective, spawn rule and member binding; returns the request.
 ---@param unit Unit
+---@param temperaments table[]|nil The squad's new temperament list; nil keeps its last list.
 ---@return userdata placement Placement request; existing callers may ignore the second return.
 ---@return userdata|nil assignment Objective request, when the unit has an objective.
-function lib.place_unit(context, unit, mode)
+function lib.place_unit(context, unit, mode, temperaments)
     local squad = context:squad(unit.squad)
     local counts = squad:counts()
     if unit.counts ~= nil then
@@ -103,7 +104,7 @@ function lib.place_unit(context, unit, mode)
             objective = context:slot(unit.objective), task_group = unit.task_group,
         }
     end
-    local request = squad:place{counts = counts, mode = mode,
+    local request = squad:place{counts = counts, mode = mode, temperaments = temperaments,
         spawn_rule = unit.spawn_rule ~= nil and context:slot(unit.spawn_rule) or nil}
     if unit.member ~= nil then context:slot(unit.member):bind_combatant_to_squad() end
     return request, assignment

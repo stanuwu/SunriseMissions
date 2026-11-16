@@ -23,9 +23,11 @@ end
 --- Replaces a unit and retains its placement and optional objective request separately.
 ---@param unit Unit
 ---@param key string Placement key within the event scope.
+---@param temperaments table[]|nil The squad's new temperament list; nil keeps its last list.
 ---@return userdata request Placement request; staging does not confirm client execution.
-function squads.place(context, scope, unit, key)
-    local request, assignment = lib.place_unit(context, unit, context.sdk.squad_modes.replace)
+function squads.place(context, scope, unit, key, temperaments)
+    local request, assignment =
+        lib.place_unit(context, unit, context.sdk.squad_modes.replace, temperaments)
     scope:set_variable(key, request.value)
     if assignment ~= nil then
         scope:set_variable(key .. OBJECTIVE_SUFFIX, assignment.value)

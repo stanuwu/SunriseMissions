@@ -114,7 +114,6 @@ function module.new(definition)
         hooks.on_squad = lane_logic.on_squad
         hooks.on_squad_counted = lane_logic.on_squad_counted
         hooks.on_objective = lane_logic.on_objective
-        hooks.on_effect = lane_logic.on_effect
 
         --- Counts accepted sacrifice completions; the runtime owns input replay protection.
         ---@param context SunriseContext Current callback's request context.
