@@ -82,6 +82,7 @@ function module.new(definition)
             for index = 1, #definition.pod_groups do
                 scope:clear_variable(c.POD_GROUP_KEY .. index)
             end
+            scope:clear_variable(c.THRESHER_DESCENT_KEY)
         end
 
         --- Returns the live wave index that this death report names, or nil.
@@ -130,16 +131,26 @@ function module.new(definition)
             return true
         end
 
-        --- Spawns the first Thresher with the program that flies it in: the entrance ability
-        --- stops it at the authored entrance point, where it fights until it is shot down.
+        --- Brings the first Thresher in as its points are authored. The spawning program's
+        --- entrance ability takes it from its staging anchor under the map to the entrance point
+        --- high above the site; the downward curve then starts there and ends beside the drill.
         local function fly_thresher(context, scope)
             if scope:variable(THRESHER_FAILED_KEY .. 1) == true then return end
             local thresher = threshers[1]
+            if scope:variable(c.THRESHER_DESCENT_KEY) == true then
+                scope:clear_variable(c.THRESHER_DESCENT_KEY)
+                if scope:variable(c.THRESHER_KEY .. 1) ~= nil then
+                    squads.follow_path(context, thresher.pilot, definition.thresher_descent)
+                end
+                return
+            end
             local request = context:slot(thresher.pilot):run_atoms{spawn = true, atoms = {
                 {kind = context.sdk.atom_kinds.ability, ability = thresher.enter,
                     target = context:slot(definition.thresher_entrance)},
             }}
             scope:set_variable(c.THRESHER_KEY .. 1, request.value)
+            scope:set_variable(c.THRESHER_DESCENT_KEY, true)
+            scope:start_timer(c.THRESHER_TIMER, c.THRESHER_DESCENT_MS)
         end
 
         -- After the flag leaves: carrier with the event row, alert, lander.
@@ -178,6 +189,7 @@ function module.new(definition)
                 if squads.owns_request(scope, c.THRESHER_KEY .. index, report.request_key) then
                     scope:set_variable(THRESHER_FAILED_KEY .. index, true)
                     scope:cancel_timer(c.THRESHER_TIMER)
+                    scope:clear_variable(c.THRESHER_DESCENT_KEY)
                     return
                 end
             end
@@ -204,6 +216,7 @@ function module.new(definition)
             scope:set_variable(c.OCCUPANTS_KEY, 0)
             scope:set_variable(c.WAVE_COUNT_KEY, 0)
             scope:clear_variable(c.CAPTURED_KEY)
+            scope:clear_variable(c.THRESHER_DESCENT_KEY)
             scope:clear_variable(c.ENDED_VALUS_KEY)
             for index = 1, #threshers do
                 scope:clear_variable(THRESHER_FAILED_KEY .. index)

@@ -124,8 +124,12 @@ function site.bind(mission, placement)
         waves = waves,
         heroic_waves = heroic_waves,
         threshers = threshers,
-        -- Single command points: the targets of the entrance and departure abilities.
+        -- Authored flight of the Thresher, read from the placements' own points: the entrance is
+        -- one point some 125 m above the site and 160 m from it, where the downward curve starts;
+        -- that curve ends at the site's height beside the drill. The upward curve climbs away and
+        -- the exit is one point under the map.
         thresher_entrance = slot("MOSQUITO_ENTRANCE_PATH"),
+        thresher_descent = slot("MOSQUITO_DOWNWARDS_PATH"),
         thresher_exit = slot("MOSQUITO_EXIT_PATH"),
         artillery = artillery,
         sniper = unit("PSION_SNIPER_SQUAD", sniper_pod, nil, task("SNIPER_OBJECTIVE")),
