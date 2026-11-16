@@ -43,26 +43,28 @@ function module.new(definition)
         return slots
     end
 
-    --- Selects the authored spire ending with a new control revision.
+    --- Selects the authored spire ending.
     function visuals.destroy_spire(context, scope, value)
-        local revision = (scope:variable(c.SPIRE_REVISION_KEY) or 0) + 1
-        scope:set_variable(c.SPIRE_REVISION_KEY, revision)
-        context:activate_objects{slots = {spire}, active = true,
-            position = {value = value, revision = revision}}
+        context:activate_objects{slots = {spire}, active = true, position = {value = value}}
     end
 
-    --- Binds the stream target before advancing the hop-on revision.
+    --- Binds the stream target before attaching the lane's hop-on to it.
     function visuals.set_stream(context, scope, lane_index, on)
         local lane = lanes[lane_index]
-        local key = c.STREAM_REVISION_KEY .. lane_index
-        local revision = (scope:variable(key) or 0) + 1
-        scope:set_variable(key, revision)
         if on then
             context:slot(lane.stream_filter):set_object_filter{target = context:slot(stream_target)}
-            context:slot(lane.stream):set_hop_on{filter = context:slot(lane.stream_filter),
-                revision = revision}
+            context:slot(lane.stream):attach_hop_on{filter = context:slot(lane.stream_filter)}
         else
-            context:slot(lane.stream):set_hop_on{revision = revision}
+            context:slot(lane.stream):detach_hop_on{}
+        end
+    end
+
+    --- Sets the object timer of each slot in place; elapsed counts up from the total.
+    local function set_timers(context, slots, remaining, total, running)
+        for _, slot in ipairs(slots) do
+            context:slot(slot):set_interactable_object{active = true, respawn = false,
+                timer = {elapsed = total - remaining, remaining = remaining,
+                    active = running == true}}
         end
     end
 
@@ -89,9 +91,7 @@ function module.new(definition)
         scope:set_variable(c.BARRIER_RUN_KEY .. lane_index, held)
         local remaining = math.floor(c.PLATE_CHARGE_SECONDS * (1 - progress) + 0.5)
         if remaining < 0 then remaining = 0 end
-        context:activate_objects{slots = {lanes[lane_index].barrier}, active = true,
-            timed = {remaining = remaining, total = c.PLATE_CHARGE_SECONDS, running = held,
-                in_place = true}}
+        set_timers(context, {lanes[lane_index].barrier}, remaining, c.PLATE_CHARGE_SECONDS, held)
     end
 
     --- Activates the central objects before starting their authored intro sequence.
@@ -135,10 +135,10 @@ function module.new(definition)
         context:activate_objects{slots = {chest}, active = false}
         context:activate_objects{slots = cover, active = true}
         context:activate_objects{slots = {beacon}, active = false}
-        context:activate_objects{slots = barrier_props, active = true,
-            timed = {remaining = 0, total = c.EVENT_SECONDS}}
-        context:activate_objects{slots = conflux_props, active = true,
-            timed = {remaining = c.EVENT_SECONDS, total = c.EVENT_SECONDS}}
+        context:activate_objects{slots = barrier_props, active = true}
+        set_timers(context, barrier_props, 0, c.EVENT_SECONDS, false)
+        context:activate_objects{slots = conflux_props, active = true}
+        set_timers(context, conflux_props, c.EVENT_SECONDS, c.EVENT_SECONDS, false)
         context:activate_objects{slots = plates, active = true, capture_plate = true}
         for _, lane in ipairs(lanes) do
             context:slot(lane.devices[c.BARRIER_DEVICE]):transition{

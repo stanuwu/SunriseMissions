@@ -36,19 +36,12 @@ function module.new(definition)
             true)
     end
 
-    --- Returns the next revision for wizard and crystal shield controls.
-    local function next_revision(scope)
-        local revision = (scope:variable(c.HOP_REVISION_KEY) or 0) + 1
-        scope:set_variable(c.HOP_REVISION_KEY, revision)
-        return revision
-    end
-
     --- The crystal's first authored output is "immune"; the other outputs stay untouched.
     function visuals.crystal_shield(context, scope, index, protected)
         local key = c.CRYSTAL_SHIELD_KEY .. index
         if scope:variable(key) == protected then return end
-        local request = context:slot(definition.crystal_channels[index]):set_output_channels{
-            values = {context.sdk.unit(protected and 1 or 0)}, revision = next_revision(scope),
+        local request = context:slot(definition.crystal_channels[index]):set_object_channels{
+            values = {protected and 1 or 0},
         }
         devices.retain(scope, key, protected, request)
     end
@@ -68,16 +61,12 @@ function module.new(definition)
     function visuals.raise_shield(context, scope, index)
         local filter = context:slot(definition.shield_filters[index])
         filter:set_object_filter{squad = context:slot(definition.wizards[index].slot)}
-        context:slot(definition.shield_hop_ons[index]):set_hop_on{
-            filter = filter, revision = next_revision(scope),
-        }
+        context:slot(definition.shield_hop_ons[index]):attach_hop_on{filter = filter}
     end
 
-    --- Removes one wizard's shield; an absent filter removes the hop-on's objects.
+    --- Removes one wizard's shield from the object that carries it.
     function visuals.drop_shield(context, scope, index)
-        return context:slot(definition.shield_hop_ons[index]):set_hop_on{
-            revision = next_revision(scope),
-        }
+        return context:slot(definition.shield_hop_ons[index]):detach_hop_on{}
     end
 
     --- Plays the authored sequence that marks one charge step on a held plate.

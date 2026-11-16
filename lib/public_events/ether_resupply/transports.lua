@@ -18,15 +18,15 @@ function transports.new(ev, prime, site)
         return c.SUPPORT_KEY .. wave .. "." .. index
     end
 
-    local function shield(context, scope, enabled)
-        local revision = (scope:variable(c.SHIELD_REVISION) or 0) + 1
-        scope:set_variable(c.SHIELD_REVISION, revision)
-        local filter
+    local function shield(context, enabled)
+        local hop_on = context:slot(site.shield)
         if enabled then
-            filter = context:slot(site.filter)
+            local filter = context:slot(site.filter)
             filter:set_object_filter{squad = context:slot(prime.slot)}
+            hop_on:attach_hop_on{filter = filter}
+        else
+            hop_on:detach_hop_on{}
         end
-        context:slot(site.shield):set_hop_on{filter = filter, revision = revision}
     end
 
     local function open_wave(context, scope, stage, escorts, timer)
@@ -36,7 +36,7 @@ function transports.new(ev, prime, site)
             scope:clear_variable(c.FALL_KEY .. index)
             squads.place(context, scope, unit, c.TRANSPORT_KEY .. index)
         end
-        shield(context, scope, true)
+        shield(context, true)
         scope:start_timer(timer, c.TRANSPORT_WINDOW_MS)
     end
 
@@ -47,7 +47,7 @@ function transports.new(ev, prime, site)
         scope:set_variable(c.TRANSPORT_STAGE, next_stage)
         scope:clear_variable(c.WITHDRAWN)
         scope:cancel_timer(timer)
-        shield(context, scope, false)
+        shield(context, false)
         for index, unit in ipairs(escorts) do
             squads.retire_if_placed(context, scope, unit, c.TRANSPORT_KEY .. index)
             scope:clear_variable(c.FALL_KEY .. index)

@@ -27,7 +27,7 @@ c.LONE_HEALTH, c.TRIO_HEALTH = 0.75, 0.50
 c.TRANSPORT_WINDOW_MS = 20000
 -- The lone and trio windows have separate timers so a late expiry cannot close the next wave.
 c.LONE_TIMER, c.TRIO_TIMER = "erl", "ert"
-c.TRANSPORT_STAGE, c.SHIELD_REVISION = "er.ts", "er.sr"
+c.TRANSPORT_STAGE = "er.ts"
 c.LONE_START_HEALTH = "er.lh" -- A repeated low health sample cannot start both waves.
 c.WITHDRAWN = "er.wd" -- A Transport reported removed during this wave.
 c.WINDOW_CLOCK = "erwc" -- Samples the host tick when the last Transport falls.

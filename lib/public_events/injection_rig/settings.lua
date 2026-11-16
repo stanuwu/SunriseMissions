@@ -12,8 +12,8 @@ c.PSIONS_KEY, c.PSION_KEY, c.OPEN_KEY, c.VENT_KEY = "r.pn", "r.ps", "r.op", "r.v
 -- Spawn generation that last ended, per squad. Host events carry the retained generation, so a
 -- late count report of an ended generation changes nothing.
 c.PSION_ENDED_KEY, c.VALUS_ENDED_KEY = "r.pe", "r.ve"
--- Attempt count choosing the lone bottom vent; hop-on revision shared by every vent control.
-c.ATTEMPT_KEY, c.HOP_ON_REVISION_KEY = "r.at", "r.hr"
+-- Attempt count choosing the lone bottom vent.
+c.ATTEMPT_KEY = "r.at"
 c.WAVE_KEY, c.HEROIC_WAVE_KEY, c.COMMANDER_KEY = "r.w", "r.hw", "r.cm"
 -- The normal route calls the Valus after the third Psion.
 c.FINAL_KEY = "r.fn"

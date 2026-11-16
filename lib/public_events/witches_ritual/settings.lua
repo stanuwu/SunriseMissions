@@ -5,10 +5,10 @@ c.NAME = "Witches' Ritual"
 -- Retained keys preserve a running attempt across script reloads; "w" is the event prefix.
 c.KEY = "w"
 -- Row stage (1 wizards, 2 portal open, 3 boss), wizards killed, placement and ended-generation
--- prefixes, live flag prefix, crystals destroyed, circle state, wave count and hop-on revision.
+-- prefixes, live flag prefix, crystals destroyed, circle state and wave count.
 c.STAGE_KEY, c.KILLED_KEY, c.UNIT_KEY, c.ENDED_KEY = "w.sg", "w.k", "w.u", "w.e"
 c.LIVE_KEY, c.CRYSTAL_KEY = "w.l", "w.cr"
-c.HOP_REVISION_KEY, c.CIRCLE_KEY, c.WAVE_COUNT_KEY = "w.hr", "w.ci", "w.n"
+c.CIRCLE_KEY, c.WAVE_COUNT_KEY = "w.ci", "w.n"
 c.PORTAL_COUNT_KEY = "w.pn"
 -- Separate position intents keep plate occupancy independent of wizard lifetime.
 c.PLATE_KEYS = {"w.pl1", "w.pl2"}
