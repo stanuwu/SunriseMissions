@@ -4,6 +4,7 @@ local cabal = require("lib.public_events.cabal_excavation.encounter")
 local injection_rig = require("lib.public_events.injection_rig.encounter")
 local rig_site = require("lib.public_events.injection_rig.site")
 local glimmer = require("lib.public_events.glimmer_extraction.encounter")
+local glimmer_site = require("lib.public_events.glimmer_extraction.site")
 local ether = require("lib.public_events.ether_resupply.encounter")
 local weapons = require("lib.public_events.weapons_exchange.encounter")
 
@@ -285,122 +286,36 @@ function events.winding_cove(mission)
     return cabal.new(bind_winding_cove(mission))
 end
 
--- The prefab tree of this registry; its first placement stands beside this rally flag.
-local MULTIPOINT, TAG, MULTIPOINT_RALLY = "PF_EVENT_MULTIPOINT_", "_80BE5D9B", "80BE4DC4"
--- Extraction crews move through these three sites in order.
-local SITE_COUNT = 3
--- Radial covers around each drill.
-local RADIAL_COVER_COUNT = 4
--- Every authored volume of the registry; the third site's own engagement volume is unnamed, so
--- the event area is their union and may reach past the three sites.
-local MULTIPOINT_VOLUMES = {MULTIPOINT .. "PF_PLACEMENT_0_PF_FALLEN_DRILL_TV_ENGAGEMENT",
-    MULTIPOINT .. "PF_PLACEMENT_1_PF_FALLEN_DRILL_TV_ENGAGEMENT", "SLOT_015B", "SLOT_0175",
-    "SLOT_0192", "SLOT_0198"}
--- Authored heroic waves in escalating order; the finale boss comes with the last wave.
-local GLIMMER_WAVES = {"SQ_HEROIC_INITIAL_LIGHT_WAVE", "SQ_HEROIC_STEALTH_MELEE_WAVE",
-    "SQ_HEROIC_HEAVY_WAVE", "SQ_HEROIC_FINALE_WAVE", "SQ_HEROIC_FINALE_BOSS"}
+-- Glimmer Extraction placements. Each names its object and root prefab, the unnamed volumes
+-- beside it and the rally prefab at its first drill site (paired by volume position).
+local EXTRACTIONS = {
+    -- Firebase Hades.
+    {region = 96, tag = "80BE5D9B", root = "PF_EVENT_MULTIPOINT",
+        volumes = {"SLOT_015B", "SLOT_0175", "SLOT_0192", "SLOT_0198"}, rally = "80BE4DC4"},
+    -- The Gulch.
+    {region = 280, tag = "80BE7652", root = "FALLEN_MULTIPOINT_CORE",
+        volumes = {"SLOT_0159", "SLOT_0173", "SLOT_0190", "SLOT_0196"}, rally = "80BE6B63",
+        rally_volume = "RALLY_POINT_SPAWN_OVERRIDE_VOLUME_HILL"},
+    -- Trostland.
+    {region = 408, tag = "80BE91F7", root = "PF_EVENT_MULTIPOINT",
+        volumes = {"SLOT_015B", "SLOT_0175", "SLOT_0192", "SLOT_0198"}, rally = "80BE8CE9",
+        rally_volume = "MULTIPOINT_OVERRIDE_VOLUME_1"},
+    -- The Sludge; it authors four drill sites.
+    {region = 448, tag = "80C26607", root = "FALLEN_MULTIPOINT_CORE",
+        volumes = {"SLOT_01DF", "SLOT_01E9", "SLOT_0205", "SLOT_020B", "SLOT_0228", "SLOT_022E"},
+        rally = "80BE9CF9", rally_volume = "MULTIPOINT_RALLY_SPAWN_OVERRIDE_VOLUME1"},
+}
 
---- Binds the region 96 extraction site.
-local function bind_multipoint(mission)
-    local Slot, Squad = mission.Slot, mission.Squad
-    local function slot(stem)
-        return lib.one(Slot[MULTIPOINT .. stem .. TAG], "glimmer slot " .. stem)
-    end
-    local function unit(stem)
-        return {squad = lib.one(Squad[MULTIPOINT .. stem .. TAG], "glimmer squad " .. stem),
-            slot = slot(stem)}
-    end
-    local captains = {"SQ_DEFENDER_BOSS", "SQ_DEFENDER_BOSS_1", "SQ_DEFENDER_BOSS_2"}
+--- Builds the Glimmer Extraction handler of every placement, with its region and sensor.
+---@return table[] sites {region, sensor, handler} in the order of EXTRACTIONS.
+function events.extractions(mission)
     local sites = {}
-    for index = 1, SITE_COUNT do
-        local prefix = "PF_PLACEMENT_" .. (index - 1) .. "_"
-        local drill = prefix .. "PF_FALLEN_DRILL_"
-        local deco = drill .. "PF_FALLEN_DRILL_DECO_"
-        local objective = MULTIPOINT .. drill .. "OBJ_DRILL_DEFENSE" .. TAG
-        local group = lib.one(mission.TaskGroup[objective], "drill task group " .. index).GROUP_0
-        local function fighters(stem)
-            local fighter = unit(stem)
-            fighter.objective = lib.one(Slot[objective], "drill objective " .. index)
-            fighter.task_group = group
-            fighter.spawn_rule = slot(drill .. "SR_DRILL_NEAR")
-            return fighter
-        end
-        local dropship = unit(drill .. "SQ_DROPSHIP")
-        dropship.spawn_rule = slot(drill .. "SR_DROPSHIP")
-        local equipment = {slot(deco .. "O_DRILL"), slot(deco .. "O_DRILL_BEACON")}
-        for cover = 0, RADIAL_COVER_COUNT - 1 do
-            equipment[#equipment + 1] = slot(deco .. "O_RADIAL_COV_" .. cover)
-        end
-        sites[index] = {
-            equipment = equipment,
-            machine = slot(prefix .. "PF_EVENT_MULTIPOINT_GENERATOR_"
-                .. glimmer.MACHINE_SLOT .. "_O_GENERATOR"),
-            dropship = dropship,
-            crew = fighters("SQ_DEFENDERS_" .. (index - 1)),
-            extractors = fighters("SQ_DEFENDER_ANCHORS_" .. (index - 1)),
-            captain = fighters(captains[index]),
-        }
+    for index, placement in ipairs(EXTRACTIONS) do
+        local definition = glimmer_site.bind(mission, placement)
+        sites[index] = {region = placement.region, sensor = definition.event_sensor,
+            handler = glimmer.new(definition)}
     end
-    local volumes = {}
-    for index, stem in ipairs(MULTIPOINT_VOLUMES) do
-        volumes[index] = lib.one(Slot[stem .. TAG], "glimmer volume " .. stem)
-    end
-    local final = "PF_PLACEMENT_" .. (SITE_COUNT - 1) .. "_"
-    local heroic_rule = slot(final .. "PF_FALLEN_DRILL_SR_DRILL_HEROIC")
-    local heroic_waves = {}
-    for index, stem in ipairs(GLIMMER_WAVES) do
-        heroic_waves[index] = unit(stem)
-        heroic_waves[index].spawn_rule = heroic_rule
-    end
-    local directive_sensor = lib.one(Slot["M_DIRECTIVE_SENSOR" .. TAG], "directive sensor")
-    local directive = lib.one(mission.Directive.GLIMMER_EXTRACTION, "extraction directive")
-    local pursue = lib.one(mission.Directive.PURSUE_THE_FALLEN, "pursue directive")
-    local heroic_directive = lib.one(mission.Directive.DEFEND_GLIMMER, "defend directive")
-    for _, row in ipairs({directive, pursue, heroic_directive}) do
-        assert(row.sensor == directive_sensor, "directive belongs to another sensor: " .. row.id)
-    end
-    local rally_tag = "_" .. MULTIPOINT_RALLY
-    local rally_sensor = lib.one(Slot["M_DIRECTIVE_SENSOR" .. rally_tag], "rally directive sensor")
-    return {
-        sites = sites,
-        heroic_waves = heroic_waves,
-        ketch = slot("PF_INTRO_FLIGHT_KETCH_O_KETCH"),
-        intro = slot("SEQ_INTRO"),
-        active = slot("SEQ_EVENT_ACTIVE_BEHAVIOR"),
-        zone = slot(final .. "O_COUNTDOWN_ZONE"),
-        ring = slot(final .. "O_CAPTURE_RING"),
-        pile = slot(final .. "O_GLIMMER_0"),
-        chest = slot(final .. "CHEST_PREFAB_CHEST_TIER0_OBJECT"),
-        directive_sensor = directive_sensor,
-        directive = directive,
-        pursue = pursue,
-        heroic_directive = heroic_directive,
-        engagement = lib.one(Slot["M_ENGAGEMENT_SENSOR" .. TAG], "engagement sensor"),
-        engagement_volumes = volumes,
-        dialog = lib.one(Slot["M_DIALOG_SENSOR" .. TAG], "dialog sensor"),
-        music = lib.one(Slot["M_MUSIC_SENSOR" .. TAG], "music sensor"),
-        event_sensor = lib.one(Slot["M_PUBLIC_EVENT_SENSOR" .. TAG], "public event sensor"),
-        event_area = volumes[1],
-        navpoint = lib.one(Slot["LOCATION_POINT" .. TAG], "location point"),
-        rally = {
-            flag = lib.one(Slot["PF_PUBLIC_EVENT_RALLY_POINT_RALLY_FLAG" .. rally_tag],
-                "rally flag"),
-            device = lib.one(Slot["PF_PUBLIC_EVENT_RALLY_POINT_RALLY_FLAG_DEVICE" .. rally_tag],
-                "flag device"),
-            sensor = rally_sensor,
-            engagement = lib.one(Slot["M_ENGAGEMENT_SENSOR" .. rally_tag],
-                "rally engagement sensor"),
-            volume = lib.one(Slot["RALLY_POINT_SPAWN_OVERRIDE_VOLUME" .. rally_tag],
-                "rally volume"),
-            directive = rally.find_directive(mission, rally_sensor),
-            incident_target = rally.FLAG_INCIDENT,
-        },
-    }
-end
-
---- Builds the region 96 Glimmer Extraction handler.
-function events.multipoint_extraction(mission)
-    return glimmer.new(bind_multipoint(mission))
+    return sites
 end
 
 --- Builds the region 24 Ether Resupply handler.

@@ -5,6 +5,8 @@ local spire = require("lib.public_events.spire_integration.encounter")
 local ether = require("lib.public_events.ether_resupply.encounter")
 local injection_rig = require("lib.public_events.injection_rig.encounter")
 local rig_site = require("lib.public_events.injection_rig.site")
+local glimmer = require("lib.public_events.glimmer_extraction.encounter")
+local glimmer_site = require("lib.public_events.glimmer_extraction.site")
 local schedule = require("lib.public_events.schedule")
 
 local events = {}
@@ -60,6 +62,40 @@ function events.spires(mission)
         definition.normal_event_state = true
         sites[index] = {region = placement.region, sensor = definition.event_sensor,
             handler = scheduled(spire.new(definition), placement.site_key)}
+    end
+    return sites
+end
+
+-- Glimmer Extraction placements of Nessus. Each names its object and root prefab, the unnamed
+-- volumes beside it, the rally prefab at its first drill site and its schedule entry. The
+-- Tangle authors two; the first has five drill sites, and an audience holds eight volumes, so
+-- it names only the drills' 64 m engagement volumes.
+local EXTRACTIONS = {
+    {region = 88, tag = "80C083E2", root = "FALLEN_MULTIPOINT_CORE",
+        volumes = {"SLOT_0158", "SLOT_0176", "SLOT_018F", "SLOT_0196"}, rally = "80C080D1",
+        rally_volume = "RALLY_POINT_SPAWN_OVERRIDE_VOLUME_COAST", site_key = 0x6D2C17FB},
+    {region = 240, tag = "80C096EC", root = "PF_EVENT_MULTIPOINT_1",
+        volumes = {"SLOT_015B", "SLOT_0175", "SLOT_0180", "SLOT_0192", "SLOT_0198"},
+        rally = "80C092AC", rally_volume = "RALLY_POINT_SPAWN_OVERRIDE_VOLUME_BLOCKS",
+        site_key = 0x0B32FC13},
+    {region = 296, tag = "80C0B311", root = "PF_EVENT_MULTIPOINT_1",
+        volumes = {"SLOT_021C", "SLOT_023F", "SLOT_027F", "SLOT_0297"},
+        rally = "80C0AA71", rally_volume = "RALLY_POINT_SPAWN_OVERRIDE_VOLUME1",
+        site_key = 0x757EF9A5},
+    {region = 296, tag = "80C0BACC", root = "PF_EVENT_MULTIPOINT_2",
+        volumes = {"SLOT_015B", "SLOT_0175", "SLOT_0180", "SLOT_0192", "SLOT_0198"},
+        rally = "80C0A9B6", rally_volume = "RALLY_POINT_SPAWN_OVERRIDE_VOLUME1",
+        site_key = 0x757EF9A6},
+}
+
+--- Builds the Glimmer Extraction handler of every placement, with its region and sensor.
+---@return table[] sites {region, sensor, handler} in the order of EXTRACTIONS.
+function events.extractions(mission)
+    local sites = {}
+    for index, placement in ipairs(EXTRACTIONS) do
+        local definition = glimmer_site.bind(mission, placement)
+        sites[index] = {region = placement.region, sensor = definition.event_sensor,
+            handler = scheduled(glimmer.new(definition), placement.site_key)}
     end
     return sites
 end

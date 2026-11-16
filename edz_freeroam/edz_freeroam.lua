@@ -13,10 +13,11 @@ local public_events = require("lib.public_events.runtime")
 local DRILL_SITE_REGION = 80
 local zones = public_events.attach(content(mission, freeroam), DRILL_SITE_REGION,
     mission.Slot.M_PUBLIC_EVENT_SENSOR_80BE4370, events.winding_cove(mission), true)
--- The Glimmer Extraction multipoint site is authored region 96.
+-- Glimmer Extraction leads the rotation of each area it is authored in; Firebase Hades is 96.
 local EXTRACTION_REGION = 96
-public_events.attach(zones, EXTRACTION_REGION, mission.Slot.M_PUBLIC_EVENT_SENSOR_80BE5D9B,
-    events.multipoint_extraction(mission), true)
+for _, placed in ipairs(events.extractions(mission)) do
+    public_events.attach(zones, placed.region, placed.sensor, placed.handler, true)
+end
 
 -- The first Ether Resupply site is authored region 24; it keeps its zone's rotation priority.
 local ETHER_SITE_REGION = 24

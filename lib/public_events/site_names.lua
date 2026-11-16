@@ -14,6 +14,7 @@ local NUMBERED_LIMIT = 15
 ---@field prefab fun(stem: string): string Generated key of a slot under the root prefab.
 ---@field zone fun(stem: string): string Generated key of a slot beside the root prefab.
 ---@field find fun(stem: string): string|nil As prefab, or nil when the placement lacks the slot.
+---@field find_zone fun(stem: string): string|nil As zone, or nil when the placement lacks it.
 ---@field numbered fun(stem: string): string[] Keys of the prefab slots stem0, stem1, ... present.
 
 --- Binds the slots of one object.
@@ -41,6 +42,7 @@ function site_names.object(mission, tag, root)
         return lib.one(key_of(stem), "slot " .. stem .. " of object " .. tag)
     end
     function object.find(stem) return key_of(base .. stem) end
+    function object.find_zone(stem) return key_of(stem) end
     function object.numbered(stem)
         local list = {}
         for number = 0, NUMBERED_LIMIT do

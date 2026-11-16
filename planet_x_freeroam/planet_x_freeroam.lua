@@ -25,6 +25,11 @@ local CISTERN_REGION = 88
 public_events.attach(zones, CISTERN_REGION, mission.Slot.M_PUBLIC_EVENT_SENSOR_80C0806D,
     events.cistern_rig(mission), true)
 
+-- Extractions follow the Spire or the rig in their areas' rotations.
+for _, placed in ipairs(events.extractions(mission)) do
+    public_events.attach(zones, placed.region, placed.sensor, placed.handler, false)
+end
+
 return freeroam.new{zones = zones, sectors = sectors(mission, freeroam), event_locations = {
     [WATCHERS_GRAVE_REGION] = "Nessus / Watcher's Grave",
     [24] = "Nessus / Exodus Black",
