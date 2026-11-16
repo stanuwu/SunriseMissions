@@ -19,10 +19,13 @@ for _, placed in ipairs(events.extractions(mission)) do
     public_events.attach(zones, placed.region, placed.sensor, placed.handler, true)
 end
 
--- The first Ether Resupply site is authored region 24; it keeps its zone's rotation priority.
+-- Ether Resupply leads the Outskirts rotation (region 24) and follows the extraction at
+-- Firebase Hades.
 local ETHER_SITE_REGION = 24
-public_events.attach(zones, ETHER_SITE_REGION, mission.Slot.M_PUBLIC_EVENT_SENSOR_80BE2C5D,
-    events.ether_resupply(mission), true)
+for _, placed in ipairs(events.ether_resupplies(mission)) do
+    public_events.attach(zones, placed.region, placed.sensor, placed.handler,
+        placed.region == ETHER_SITE_REGION)
+end
 
 -- Weapons Exchange shares its areas with other events and does not lead their rotations.
 for _, placed in ipairs(events.weapons_exchanges(mission)) do

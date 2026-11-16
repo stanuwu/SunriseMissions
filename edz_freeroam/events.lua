@@ -15,30 +15,31 @@ local events = {}
 -- The Winding Cove drill site: its object and the rally prefab 24 m from it.
 local WINDING_COVE = {tag = "80BE4370", root = "CABAL_DRILL_CORE", rally = "80BE3F78"}
 
---- Binds the region 24 Ether Resupply site.
-local function bind_ether_resupply(mission)
+-- Ether Resupply placements: Outskirts and Firebase Hades.
+local SERVITORS = {{region = 24, tag = "80BE2C5D"}, {region = 96, tag = "80BE58B2"}}
+-- The objective row of the directive sensor by title and name hash.
+local ETHER_ROW = {"ETHER_RESUPPLY", 0x186885A4}
+
+--- Binds one Ether Resupply placement.
+local function bind_ether_resupply(mission, placement)
     local Slot = mission.Slot
-    local function slot(stem)
-        return lib.one(Slot["PF_EVENT_FALLEN_SERVITOR_1_" .. stem .. "_80BE2C5D"],
-            "ether slot " .. stem)
-    end
-    local directive_sensor = lib.one(Slot.M_DIRECTIVE_SENSOR_80BE2C5D, "directive sensor")
-    local directive = lib.one(mission.Directive.ETHER_RESUPPLY, "directive")
-    assert(directive.sensor == directive_sensor,
-        "directive belongs to another sensor: " .. directive.id)
+    local object = site_names.object(mission, placement.tag, "PF_EVENT_FALLEN_SERVITOR_1")
+    local function slot(stem) return Slot[object.prefab(stem)] end
+    local function zone_slot(stem) return Slot[object.zone(stem)] end
+    local directive_sensor = zone_slot("M_DIRECTIVE_SENSOR")
     local area = slot("TV_OBJECTIVE_AND_ENGAGEMENT_BIND")
-    local prime_squad = mission.Squad.PF_EVENT_FALLEN_SERVITOR_1_SQ_ULTRA_SERVITOR_80BE2C5D
+    local prime_squad = mission.Squad[object.prefab("SQ_ULTRA_SERVITOR")]
     return {
         -- The squad slot reports the Prime's death; the squad id places it.
         prime = {squad = lib.one(prime_squad, "prime squad"), slot = slot("SQ_ULTRA_SERVITOR")},
         chest = slot("PF_REWARD_CHEST_CHEST_TIER0_OBJECT"),
         directive_sensor = directive_sensor,
-        directive = directive,
-        engagement = lib.one(Slot.M_ENGAGEMENT_SENSOR_80BE2C5D, "engagement sensor"),
+        directive = site_names.directive(mission, ETHER_ROW[1], ETHER_ROW[2], directive_sensor),
+        engagement = zone_slot("M_ENGAGEMENT_SENSOR"),
         engagement_volume = area,
-        dialog = lib.one(Slot.M_DIALOG_SENSOR_80BE2C5D, "dialog sensor"),
-        music = lib.one(Slot.M_MUSIC_SENSOR_80BE2C5D, "music sensor"),
-        event_sensor = lib.one(Slot.M_PUBLIC_EVENT_SENSOR_80BE2C5D, "public event sensor"),
+        dialog = zone_slot("M_DIALOG_SENSOR"),
+        music = zone_slot("M_MUSIC_SENSOR"),
+        event_sensor = zone_slot("M_PUBLIC_EVENT_SENSOR"),
         event_area = area,
     }
 end
@@ -190,9 +191,16 @@ function events.extractions(mission)
     return sites
 end
 
---- Builds the region 24 Ether Resupply handler.
-function events.ether_resupply(mission)
-    return ether.new(bind_ether_resupply(mission))
+--- Builds the Ether Resupply handler of every placement, with its region and sensor.
+---@return table[] sites {region, sensor, handler} in the order of SERVITORS.
+function events.ether_resupplies(mission)
+    local sites = {}
+    for index, placement in ipairs(SERVITORS) do
+        local definition = bind_ether_resupply(mission, placement)
+        sites[index] = {region = placement.region, sensor = definition.event_sensor,
+            handler = ether.new(definition)}
+    end
+    return sites
 end
 
 --- Generated names of the region 312 rig. Cue text: 4 and 5 the rig leaving, 6 and 7 it exploding.
