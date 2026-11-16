@@ -32,4 +32,9 @@ local RIG_SITE_REGION = 312
 public_events.attach(zones, RIG_SITE_REGION, mission.Slot.M_PUBLIC_EVENT_SENSOR_80BE140D,
     events.injection_rig(mission), true)
 
-return freeroam.new{zones = zones, sectors = sectors(mission, freeroam)}
+return freeroam.new{zones = zones, sectors = sectors(mission, freeroam), event_locations = {
+    [DRILL_SITE_REGION] = "EDZ / Winding Cove",
+    [EXTRACTION_REGION] = "EDZ / Region " .. EXTRACTION_REGION,
+    [ETHER_SITE_REGION] = "EDZ / Region " .. ETHER_SITE_REGION,
+    [RIG_SITE_REGION] = "EDZ / Region " .. RIG_SITE_REGION,
+}}

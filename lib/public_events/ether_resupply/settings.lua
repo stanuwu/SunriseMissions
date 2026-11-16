@@ -1,5 +1,6 @@
 -- Ether Resupply encounter settings.
 local c = {}
+c.NAME = "Ether Resupply"
 
 -- Retained keys preserve a running attempt across script reloads; "er" is the event prefix.
 c.KEY = "er"

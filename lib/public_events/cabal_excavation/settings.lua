@@ -1,5 +1,6 @@
 -- Cabal Excavation encounter settings.
 local c = {}
+c.NAME = "Cabal Excavation"
 
 -- Retained keys preserve a running attempt across script reloads; "c" is the event prefix.
 c.KEY = "c"

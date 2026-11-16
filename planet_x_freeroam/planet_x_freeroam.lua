@@ -15,4 +15,5 @@ local zones = public_events.attach(content(mission, freeroam), WATCHERS_GRAVE_RE
 public_events.attach(zones, WATCHERS_GRAVE_REGION,
     mission.Slot.M_PUBLIC_EVENT_SENSOR_80C03459, events.watchers_grave_ether(mission), false)
 
-return freeroam.new{zones = zones, sectors = sectors(mission, freeroam)}
+return freeroam.new{zones = zones, sectors = sectors(mission, freeroam),
+    event_locations = {[WATCHERS_GRAVE_REGION] = "Nessus / Watcher's Grave"}}

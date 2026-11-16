@@ -9,7 +9,7 @@ local MS_PER_SECOND = 1000
 local CALLBACKS = {
     "start", "abort", "on_squad", "on_squad_counted", "on_effect", "on_objective",
     "on_object_state", "on_trigger", "on_damage", "on_engagement", "on_incident",
-    "on_interaction", "on_cleanup_effect", "cleanup_pending",
+    "on_interaction", "on_cleanup_effect", "cleanup_pending", "status",
 }
 
 ---@class PublicEventLifecycle
@@ -84,6 +84,7 @@ function Lifecycle:release(scope)
 end
 
 ---@class PublicEventOptions
+---@field name string|nil Event name in the launcher.
 ---@field key string State and timer prefix within the freeroam zone scope.
 ---@field duration_seconds integer Normal event duration.
 ---@field tick_seconds integer Existing freeroam service cadence.
@@ -109,7 +110,7 @@ function runtime.new(options, create)
     assert(type(encounter.start) == "function", "event needs a start callback")
     assert(type(encounter.on_deadline) == "function", "event needs a deadline callback")
     assert(type(encounter.on_ending_timer) == "function", "event needs an ending callback")
-    local handler = {}
+    local handler = {name = options.name}
     for _, name in ipairs(CALLBACKS) do handler[name] = encounter[name] end
 
     --- Routes the main timer by phase; other timers retain the encounter's own checks.

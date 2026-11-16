@@ -375,6 +375,17 @@ end
 function Event:handler()
     local handler = {}
 
+    --- Returns the host stage and, during rally, the flag's stop time in host milliseconds.
+    function handler.status(scope)
+        if self:rally_open(scope) then
+            return "Rally", tonumber(scope.state:timer(scope:key(self.rally.stop_timer)))
+        end
+        local phase = self.lifecycle:phase(scope)
+        if phase == runtime.phase.active then return "Active" end
+        if phase == runtime.phase.ending then return "Finishing" end
+        if phase == runtime.phase.incoming then return "Incoming" end
+    end
+
     --- Waits for cleanup within the held-zone bound, retaining unsuccessful cleanup as a warning.
     function handler.cleanup_pending(scope, held_ticks)
         return self.final_cleanup:blocked(scope, held_ticks)
@@ -503,7 +514,7 @@ end
 ---@return table handler Retains definitions and hooks, never mutable gameplay state.
 function event.new(definition, settings, build)
     local key = settings.KEY
-    return runtime.new({key = key, duration_seconds = settings.EVENT_SECONDS,
+    return runtime.new({name = settings.NAME, key = key, duration_seconds = settings.EVENT_SECONDS,
         tick_seconds = settings.TICK_SECONDS}, function(lifecycle)
         local self = setmetatable({
             definition = definition,

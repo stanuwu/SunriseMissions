@@ -1,5 +1,6 @@
 -- Witches' Ritual retains the encounter keys below across script reloads.
 local c = {}
+c.NAME = "Witches' Ritual"
 
 -- Retained keys preserve a running attempt across script reloads; "w" is the event prefix.
 c.KEY = "w"

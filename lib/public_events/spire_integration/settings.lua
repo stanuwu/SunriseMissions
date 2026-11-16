@@ -1,5 +1,6 @@
 -- Spire lane, device and encounter settings.
 local c = {}
+c.NAME = "Spire Integration"
 
 -- Retained keys preserve a running attempt across script reloads; "e" is the event prefix.
 c.KEY = "e"

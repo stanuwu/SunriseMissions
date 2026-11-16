@@ -1,5 +1,6 @@
 -- Weapons Exchange encounter settings.
 local c = {}
+c.NAME = "Weapons Exchange"
 
 -- Retained keys preserve a running attempt across script reloads; "w" is the event prefix.
 c.KEY = "w"

@@ -42,6 +42,8 @@ local SECTOR_ACTIVE = 1
 local SECTOR_CLEARED = 2
 local SECTOR_CLEARED_KEY = "sk"
 local ACTIVE_SITE_KEY = "as"
+-- A manually started site keeps its turn until it ends or the host cancels it.
+local MANUAL_KEY = "manual_event"
 -- Per zone: the host answered the client's arrival in this zone (set once), and a public site
 -- is waiting for that answer before it starts.
 local ARRIVED_KEY = "arr"
@@ -211,11 +213,10 @@ end
 -- A handler may carry a schedule: asked with the context it answers with a wait in seconds or
 -- with the arrival the start takes. A slot picked for another site of the zone goes to that site.
 -- Without a host clock the site starts as an unscheduled one.
-local function start_site(context, scope, zone, site)
-    local arrival, plan
-    if site.handler ~= nil and site.handler.schedule ~= nil then
+local function start_site(context, scope, zone, site, arrival)
+    if arrival == nil and site.handler ~= nil and site.handler.schedule ~= nil then
         local now = context.host_unix_seconds
-        plan = now ~= nil and site.handler.schedule(context) or nil
+        local plan = now ~= nil and site.handler.schedule(context) or nil
         if plan ~= nil and plan.wait_seconds ~= nil then
             local picked = scheduled_ordinal(zone, plan.selected_site)
             if picked ~= nil and zone.events[picked] ~= site then
@@ -284,6 +285,7 @@ end
 
 -- The next site starts after the cooldown; the finished site keeps nothing.
 local function finish_site(scope, zone, site, cooldown_ticks, respawn_ticks)
+    scope:clear_variable(MANUAL_KEY)
     scope:set_variable(site.phase_key, PHASE_CLEARED)
     schedule(scope, site.index, cooldown_ticks)
     release_patrol(scope, zone, site, respawn_ticks)
@@ -419,6 +421,9 @@ end
 local function arrive(context, state, zone)
     local scope = lib.scope(context, state, zone.tag)
     scope:set_variable(ARRIVED_KEY, true)
+    if zone.event_location and scope:variable("event_region") ~= zone.region then
+        scope:set_variable("event_region", zone.region)
+    end
     if scope:variable(SITE_WAITING_KEY) then
         scope:clear_variable(SITE_WAITING_KEY)
         start_active_site(context, scope, zone, 1)
@@ -436,7 +441,71 @@ local function resume_zone(context, scope, zone)
     end
 end
 
-local function service_zone(context, scope, zone)
+-- Publishes committed progress for the overlay. Repeated ticks keep the same durable values.
+local function report_event(scope, key, value)
+    if scope:variable(key) ~= value then scope:set_variable(key, value) end
+end
+
+local function event_status(scope, site)
+    if not site or scope:variable(site.phase_key) ~= PHASE_RUNNING then return "Waiting" end
+    if site.handler and site.handler.status then return site.handler.status(scope) end
+    return "Active"
+end
+
+local function report_site(scope, site)
+    local status, rally_end = event_status(scope, site)
+    status = status or "Waiting"
+    local current = status ~= "Waiting" and scope:variable(ACTIVE_SITE_KEY) or 0
+    report_event(scope, "event_current", current)
+    report_event(scope, "event_status", status)
+    report_event(scope, "event_rally_end", rally_end or 0)
+    return status
+end
+
+-- Returns true while the launcher owns this service tick. The existing abort and cleanup run
+-- before the new arrival, so replacing a rally cannot leave its flag or squads in the next one.
+local function service_launcher(context, scope, zone, site, cleanup_pending, cooldown, respawn)
+    if not zone.event_location or context.activity_role ~= "public"
+        or scope:variable("event_region") ~= zone.region then return false end
+    local phase = report_site(scope, site)
+    local manual = scope:variable(MANUAL_KEY) == true
+    local request = context.public_event_request
+    if not request or request.region ~= zone.region
+        or request.serial == scope:variable("event_request_seen") then return manual end
+    if request.site == 0 and not manual then
+        scope:set_variable("event_request_seen", request.serial)
+        return false
+    end
+    local wanted = zone.events[request.site]
+    if request.site ~= 0 and (not wanted or not wanted.handler or not wanted.handler.name) then
+        scope:set_variable("event_request_seen", request.serial)
+        return manual
+    end
+    if cleanup_pending or phase == "Finishing" then return true end
+    if site and scope:variable(site.phase_key) == PHASE_RUNNING then
+        if site.handler then
+            site.handler.abort(context, scope, site)
+        else
+            retire_units(context, site.squads)
+            set_objects(context, site.chest, false)
+        end
+        finish_site(scope, zone, site, cooldown, respawn)
+        report_site(scope, nil)
+        return true
+    end
+    scope:clear_variable(NEXT_SITE_KEY)
+    scope:set_variable("event_request_seen", request.serial)
+    if request.site == 0 then return false end
+    local seconds = request.rally_seconds
+    local arrival = seconds == 0 and {active = true} or {rally_seconds = seconds, rally_total = seconds}
+    scope:set_variable(MANUAL_KEY, true)
+    scope:set_variable(ACTIVE_SITE_KEY, request.site)
+    start_site(context, scope, zone, wanted, arrival)
+    report_site(scope, wanted)
+    return true
+end
+
+local function service_zone(context, scope, zone, cooldown, respawn)
     local running = active_site(scope, zone)
     for _, unit in ipairs(zone.patrol) do
         if due(scope, unit.index) and not patrol_held(scope, running, unit) then
@@ -444,9 +513,7 @@ local function service_zone(context, scope, zone)
             place_one(context, unit, context.sdk.squad_modes.reinforce)
         end
     end
-    -- A waiting site re-plans every tick, so a schedule the host rewrites meanwhile (the overlay's
-    -- Event Launcher) takes effect at once; a boundary crossed lands in the arm the clock now
-    -- names, never in a restarted countdown.
+    -- Re-read the schedule on each tick so arrivals keep the remaining time in the slot.
     local site = active_site(scope, zone)
     -- Retained cleanup owns the site until it settles or exhausts its held-tick allowance.
     local cleanup_pending = false
@@ -459,7 +526,8 @@ local function service_zone(context, scope, zone)
             scope:clear_variable(CLEANUP_WAIT_KEY)
         end
     end
-    if cleanup_pending then return end
+    if service_launcher(context, scope, zone, site, cleanup_pending, cooldown, respawn)
+        or cleanup_pending then return end
     local next_site = scope:variable(NEXT_SITE_KEY)
     if next_site ~= nil then
         start_active_site(context, scope, zone, next_site)
@@ -499,7 +567,7 @@ function freeroam.new(definition)
     local cooldown_ticks =
         ticks_for(definition.event_cooldown_ms or DEFAULT_EVENT_COOLDOWN_MS, tick_ms)
 
-    local by_region = {}
+    local by_region, launcher_sites = {}, {}
     for _, zone in ipairs(zones) do
         local encounter = definition.sectors ~= nil and definition.sectors[zone.region] or nil
         if encounter ~= nil then
@@ -527,6 +595,14 @@ function freeroam.new(definition)
             zone.sector.guarded_crystals = guarded
         end
         number_zone(zone)
+        local label = definition.event_locations and definition.event_locations[zone.region]
+        for ordinal, site in ipairs(zone.events) do
+            if site.handler and site.handler.name then
+                zone.event_location = label or ("Region " .. zone.region)
+                launcher_sites[#launcher_sites + 1] = {region = zone.region, site = ordinal,
+                    location = zone.event_location, name = site.handler.name}
+            end
+        end
         assert(by_region[zone.region] == nil, "two zones share a region")
         by_region[zone.region] = zone
     end
@@ -642,7 +718,18 @@ function freeroam.new(definition)
         on_event_region_changed = function(context, state, event)
             local departed = held_zone(state)
             if departed ~= nil and departed.region ~= event.region_index then
-                lib.scope(context, state, departed.tag):clear_variable(CLEANUP_WAIT_KEY)
+                local scope = lib.scope(context, state, departed.tag)
+                scope:clear_variable(CLEANUP_WAIT_KEY)
+                if departed.event_location then
+                    scope:clear_variable("event_region")
+                    scope:clear_variable("event_current")
+                    scope:clear_variable("event_status")
+                    scope:clear_variable("event_rally_end")
+                    local request = context.public_event_request
+                    if request and request.region == departed.region then
+                        scope:set_variable("event_request_seen", request.serial)
+                    end
+                end
             end
             local zone = by_region[event.region_index]
             context:set_variable(HELD_KEY, event.region_index)
@@ -731,7 +818,7 @@ function freeroam.new(definition)
             end
             local scope = lib.scope(context, state, zone.tag)
             scope:set_variable(TICK_KEY, now_tick(scope) + 1)
-            service_zone(context, scope, zone)
+            service_zone(context, scope, zone, cooldown_ticks, respawn_ticks)
             context:start_timer(TICK_TIMER, tick_ms)
         end,
 
@@ -794,6 +881,7 @@ function freeroam.new(definition)
             handler(context, state, event)
         end
     end
+    program.public_events = launcher_sites
     return program
 end
 
