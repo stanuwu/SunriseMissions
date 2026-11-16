@@ -3,6 +3,8 @@ local rally = require("lib.public_events.rally")
 local site = require("lib.public_events.spire_integration.site")
 local spire = require("lib.public_events.spire_integration.encounter")
 local ether = require("lib.public_events.ether_resupply.encounter")
+local injection_rig = require("lib.public_events.injection_rig.encounter")
+local rig_site = require("lib.public_events.injection_rig.site")
 local schedule = require("lib.public_events.schedule")
 
 local events = {}
@@ -60,6 +62,28 @@ function events.spires(mission)
             handler = scheduled(spire.new(definition), placement.site_key)}
     end
     return sites
+end
+
+--- Generated names of the rig at The Cistern. Its dialogue sensor holds the cue hashes of the
+--- EDZ rig in the same order, so the cue ordinals are the EDZ site's. Rally 80C080C1 is paired by
+--- volume position, 13 m from the rig.
+local CISTERN_RIG = {
+    suffix = "_80C0806D",
+    navpoint = "LOCATION_POINT_80C0806D",
+    cues = {CUE_ALERT = 0, CUE_START = 1, CUE_VENTS = 2, CUE_FAILED = 3, CUE_SUCCESS = 4,
+        CUE_HEROIC_SUCCESS = 6, CUE_HEROIC_FAILED = 3},
+    psion_row = "INJECTION_RIG_DFFC1441",
+    evacuate_row = "INJECTION_RIG_15417709",
+    valus_row = "INJECTION_RIG_5DE0F6DF",
+    final_row = "INJECTION_RIG",
+    rally_key = "_80C080C1",
+    rally_volume = "RALLY_POINT_SPAWN_OVERRIDE_VOLUME_ISLAND_80C080C1",
+}
+local CISTERN_RIG_SITE_KEY = 0x8DA5D073
+
+--- Builds the Injection Rig handler of The Cistern.
+function events.cistern_rig(mission)
+    return scheduled(injection_rig.new(rig_site.bind(mission, CISTERN_RIG)), CISTERN_RIG_SITE_KEY)
 end
 
 -- Generated names of the Servitor site: prefab slots carry no registry suffix, zone sensors do.

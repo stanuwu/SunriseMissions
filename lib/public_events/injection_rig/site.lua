@@ -41,6 +41,7 @@ local DANGER_LIGHTS = 4
 ---@field valus_row string Directive key of the heroic Valus counter; its table flag is set.
 ---@field final_row string Directive key of the normal Valus counter; its table flag is clear.
 ---@field rally_key string|nil Generated suffix of the rally paired with this site.
+---@field rally_volume string|nil Exact key of the rally's volume when the site names its own.
 
 --- Resolves a site's authored content into the rig event definition.
 ---@param mission table Generated mission module.
@@ -93,7 +94,7 @@ function site.bind(mission, ids)
     local engagement_volume = slot("TV_ENGAGEMENT")
     local rally_definition
     if ids.rally_key ~= nil then
-        rally_definition = rally.bind(mission, ids.rally_key)
+        rally_definition = rally.bind(mission, ids.rally_key, ids.rally_volume)
     end
     local psion_directive = lib.one(Directive[ids.psion_row], "rig Psion directive")
     local heroic_waves = units(HEROIC_WAVES, slot("OBJ_HEROIC"))
