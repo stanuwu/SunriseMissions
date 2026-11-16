@@ -484,12 +484,16 @@ local function report_site(scope, site)
     return status
 end
 
--- Stops the site that runs here, in any phase from rally to chest. A family's abort cancels its
--- timers, retires its squads, withdraws the flag and queues the final cleanup of its objects, rows,
--- music and audience; an unbound site retires its squads and chest.
+-- Stops the site that runs here, in any phase from rally to chest. A family cancels its timers,
+-- retires its squads, withdraws the flag and queues the final cleanup of its objects, rows, music
+-- and audience; a live objective first plays a short ending, and its own timer then releases the
+-- site. An unbound site retires its squads and chest.
 local function stop_site(context, scope, zone, site, cooldown, respawn)
-    if site.handler then
-        site.handler.abort(context, scope, site)
+    local handler = site.handler
+    if handler and handler.cancel then
+        if not handler.cancel(context, scope, site) then return end
+    elseif handler then
+        handler.abort(context, scope, site)
     else
         retire_units(context, site.squads)
         set_objects(context, site.chest, false)

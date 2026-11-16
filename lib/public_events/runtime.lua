@@ -7,7 +7,7 @@ runtime.phase = {active = 1, ending = 2, aborted = 3, incoming = 4}
 local DEADLINE = 1
 local MS_PER_SECOND = 1000
 local CALLBACKS = {
-    "start", "abort", "on_squad", "on_squad_counted", "on_effect", "on_objective",
+    "start", "abort", "cancel", "on_squad", "on_squad_counted", "on_effect", "on_objective",
     "on_object_state", "on_trigger", "on_damage", "on_engagement", "on_incident",
     "on_interaction", "on_cleanup_effect", "cleanup_pending", "status",
 }
