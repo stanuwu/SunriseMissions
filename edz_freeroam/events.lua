@@ -86,6 +86,13 @@ local function bind_weapons_exchange(mission, placement)
         roster[index] = {slot = slot(stem),
             squad = lib.one(Squad[object.prefab(stem)], "weapons squad " .. stem)}
     end
+    -- The Host sends a flight program only to an actor it holds a body for, so each carrier's
+    -- pilot is bound to its squad when the carrier is placed.
+    local CARRIER_PILOTS = {SQ_DROPSHIP_TANK = "SQ_DROPSHIP_TANK_PILOT",
+        SQ_DROPSHIP_HEROIC = "SQ_DROPSHIP_HEROIC_PILOT"}
+    for index, stem in ipairs(TANK_ROSTER) do
+        if CARRIER_PILOTS[stem] ~= nil then roster[index].member = slot(CARRIER_PILOTS[stem]) end
+    end
     local arrays = {}
     for index = 0, ARRAY_COUNT - 1 do
         local stem = "EVENT_SPIDER_TANK_COMM_ARRAY_" .. index .. "_"

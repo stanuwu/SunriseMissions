@@ -244,7 +244,9 @@ function module.new(definition)
         hooks.on_stop = retire_squads
 
         --- A heroic win destroys the lander, any other ending withdraws it; the carrier departs.
+        --- The override footprint and its ring leave with the objective, not with the chest.
         function hooks.on_finish(context, scope, succeeded)
+            context:activate_objects{slots = {zone, definition.ring}, active = false}
             if succeeded and ev:heroic(scope) then
                 visuals.destroy_lander(context, scope)
             else

@@ -79,6 +79,9 @@ function site.bind(mission, placement)
     for index = 1, THRESHER_COUNT do
         threshers[index] = unit("MOSQUITO0" .. index .. "_SQUAD", {})
         threshers[index].pilot = slot("MOSQUITO0" .. index .. "_SQUAD_PILOT")
+        -- The Host sends a program only to an actor it holds a body for, so the pilot is bound
+        -- to its squad when the squad is placed; an unbound pilot's flight order is refused.
+        threshers[index].member = threshers[index].pilot
     end
     local artillery = {slot("ARTILLERY_AREA_OBJECT")}
     for index = 0, BARRAGE_SIZE - 1 do
