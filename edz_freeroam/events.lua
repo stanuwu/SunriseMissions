@@ -56,6 +56,9 @@ local EXCHANGES = {
         rally = "80BE0B1A"},
 }
 local TANK_ROOT = "PF_EVENT_SPIDER_TANK"
+-- Pilot of each carrier squad in the roster, by squad stem.
+local CARRIER_PILOTS = {SQ_DROPSHIP_TANK = "SQ_DROPSHIP_TANK_PILOT",
+    SQ_DROPSHIP_HEROIC = "SQ_DROPSHIP_HEROIC_PILOT"}
 -- Rows of the directive sensor by title and name hash.
 local EXCHANGE_ROW = {"DISRUPT_WEAPONS_EXCHANGE", 0x82A993F5}
 local WALKER_ROW = {"DESTROY_THE_ARSENAL_WALKER", 0xFA872386}
@@ -81,16 +84,12 @@ local function bind_weapons_exchange(mission, placement)
         for _, stem in ipairs(stems) do list[#list + 1] = slot(stem) end
         return list
     end
+    -- The Host sends a flight program only to an actor it holds a body for, so each carrier's
+    -- pilot is bound to its squad when the carrier is placed.
     local roster = {}
     for index, stem in ipairs(TANK_ROSTER) do
         roster[index] = {slot = slot(stem),
             squad = lib.one(Squad[object.prefab(stem)], "weapons squad " .. stem)}
-    end
-    -- The Host sends a flight program only to an actor it holds a body for, so each carrier's
-    -- pilot is bound to its squad when the carrier is placed.
-    local CARRIER_PILOTS = {SQ_DROPSHIP_TANK = "SQ_DROPSHIP_TANK_PILOT",
-        SQ_DROPSHIP_HEROIC = "SQ_DROPSHIP_HEROIC_PILOT"}
-    for index, stem in ipairs(TANK_ROSTER) do
         if CARRIER_PILOTS[stem] ~= nil then roster[index].member = slot(CARRIER_PILOTS[stem]) end
     end
     local arrays = {}
@@ -106,7 +105,7 @@ local function bind_weapons_exchange(mission, placement)
         local props = slots({stem .. "O_PEDESTAL", stem .. "O_AVOIDANCE",
             stem .. "O_PLAYER_PHYSICS_BUMP"})
         for _, list in ipairs({shields, receptacles}) do
-            for _, object in ipairs(list) do props[#props + 1] = object end
+            for _, prop in ipairs(list) do props[#props + 1] = prop end
         end
         arrays[index + 1] = {shields = shields, receptacles = receptacles, props = props}
     end

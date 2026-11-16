@@ -44,6 +44,12 @@ local SECTOR_CLEARED_KEY = "sk"
 local ACTIVE_SITE_KEY = "as"
 -- A manually started site keeps its turn until it ends or the host cancels it.
 local MANUAL_KEY = "manual_event"
+-- Zone variables the Event Launcher overlay reads, and the request serial this zone answered.
+local EVENT_REGION_KEY, EVENT_CURRENT_KEY = "event_region", "event_current"
+local EVENT_STATUS_KEY, EVENT_RALLY_END_KEY = "event_status", "event_rally_end"
+local EVENT_REQUEST_SEEN_KEY = "event_request_seen"
+-- Status of a zone with no running event, and the one a handler reports while its ending plays.
+local STATUS_WAITING, STATUS_FINISHING = "Waiting", "Finishing"
 -- Per zone: the host answered the client's arrival in this zone (set once), and a public site
 -- is waiting for that answer before it starts.
 local ARRIVED_KEY = "arr"
@@ -443,8 +449,8 @@ end
 local function arrive(context, state, zone)
     local scope = lib.scope(context, state, zone.tag)
     scope:set_variable(ARRIVED_KEY, true)
-    if zone.event_location and scope:variable("event_region") ~= zone.region then
-        scope:set_variable("event_region", zone.region)
+    if zone.event_location and scope:variable(EVENT_REGION_KEY) ~= zone.region then
+        scope:set_variable(EVENT_REGION_KEY, zone.region)
     end
     if scope:variable(SITE_WAITING_KEY) then
         scope:clear_variable(SITE_WAITING_KEY)
@@ -469,25 +475,24 @@ local function report_event(scope, key, value)
 end
 
 local function event_status(scope, site)
-    if not site or scope:variable(site.phase_key) ~= PHASE_RUNNING then return "Waiting" end
+    if not site or scope:variable(site.phase_key) ~= PHASE_RUNNING then return STATUS_WAITING end
     if site.handler and site.handler.status then return site.handler.status(scope) end
     return "Active"
 end
 
 local function report_site(scope, site)
     local status, rally_end = event_status(scope, site)
-    status = status or "Waiting"
-    local current = status ~= "Waiting" and scope:variable(ACTIVE_SITE_KEY) or 0
-    report_event(scope, "event_current", current)
-    report_event(scope, "event_status", status)
-    report_event(scope, "event_rally_end", rally_end or 0)
+    status = status or STATUS_WAITING
+    local current = status ~= STATUS_WAITING and scope:variable(ACTIVE_SITE_KEY) or 0
+    report_event(scope, EVENT_CURRENT_KEY, current)
+    report_event(scope, EVENT_STATUS_KEY, status)
+    report_event(scope, EVENT_RALLY_END_KEY, rally_end or 0)
     return status
 end
 
--- Stops the site that runs here, in any phase from rally to chest. A family cancels its timers,
--- retires its squads, withdraws the flag and queues the final cleanup of its objects, rows, music
--- and audience; a live objective first plays a short ending, and its own timer then releases the
--- site. An unbound site retires its squads and chest.
+-- Stops the site that runs here, in any phase from rally to chest. A family cancels its timers
+-- and squads and queues its final cleanup; a live objective first plays a short ending whose own
+-- timer releases the site. An unbound site retires its squads and chest.
 local function stop_site(context, scope, zone, site, cooldown, respawn)
     local handler = site.handler
     if handler and handler.cancel then
@@ -514,7 +519,7 @@ local function end_event(context, scope, zone, site, cleanup_pending, cooldown, 
     if cleanup_pending then return true end
     scope:clear_variable(NEXT_SITE_KEY)
     scope:clear_variable(MANUAL_KEY)
-    scope:set_variable("event_request_seen", request.serial)
+    scope:set_variable(EVENT_REQUEST_SEEN_KEY, request.serial)
     return false
 end
 
@@ -522,31 +527,32 @@ end
 -- before the new arrival, so replacing a rally cannot leave its flag or squads in the next one.
 local function service_launcher(context, scope, zone, site, cleanup_pending, cooldown, respawn)
     if not zone.event_location or context.activity_role ~= "public"
-        or scope:variable("event_region") ~= zone.region then return false end
-    local phase = report_site(scope, site)
+        or scope:variable(EVENT_REGION_KEY) ~= zone.region then return false end
+    local status = report_site(scope, site)
     local manual = scope:variable(MANUAL_KEY) == true
     local request = context.public_event_request
     if not request or request.region ~= zone.region
-        or request.serial == scope:variable("event_request_seen") then return manual end
+        or request.serial == scope:variable(EVENT_REQUEST_SEEN_KEY) then return manual end
     if request.site == 0 then
         return end_event(context, scope, zone, site, cleanup_pending, cooldown, respawn, request)
     end
     local wanted = zone.events[request.site]
     if not wanted or not wanted.handler or not wanted.handler.name then
-        scope:set_variable("event_request_seen", request.serial)
+        scope:set_variable(EVENT_REQUEST_SEEN_KEY, request.serial)
         return manual
     end
     hold_scheduled_slots(context, scope, zone)
     -- A start waits for a finishing event's chest; only an end request cuts that short.
-    if cleanup_pending or phase == "Finishing" then return true end
+    if cleanup_pending or status == STATUS_FINISHING then return true end
     if site and scope:variable(site.phase_key) == PHASE_RUNNING then
         stop_site(context, scope, zone, site, cooldown, respawn)
         return true
     end
     scope:clear_variable(NEXT_SITE_KEY)
-    scope:set_variable("event_request_seen", request.serial)
+    scope:set_variable(EVENT_REQUEST_SEEN_KEY, request.serial)
     local seconds = request.rally_seconds
-    local arrival = seconds == 0 and {active = true} or {rally_seconds = seconds, rally_total = seconds}
+    local arrival = {active = true}
+    if seconds ~= 0 then arrival = {rally_seconds = seconds, rally_total = seconds} end
     scope:set_variable(MANUAL_KEY, true)
     scope:set_variable(ACTIVE_SITE_KEY, request.site)
     start_site(context, scope, zone, wanted, arrival)
@@ -691,7 +697,8 @@ function freeroam.new(definition)
     end
 
     -- A handled site keeps its timers and reports only while its zone is held, so leaving the
-    -- zone mid-event would strand it. The handler aborts and the site takes its cooldown.
+    -- zone mid-event would strand it. The handler aborts and the site takes its cooldown. A
+    -- scheduled attempt left before its ending keeps its occurrence for a return.
     local function abort_departed(context, state, region)
         for _, zone in ipairs(zones) do
             if zone.region ~= region and owns(context, zone) then
@@ -699,7 +706,10 @@ function freeroam.new(definition)
                 local site = active_site(scope, zone)
                 if site ~= nil and site.handler ~= nil and site.handler.abort ~= nil
                     and scope:variable(site.phase_key) == PHASE_RUNNING then
-                    if not scope:variable(MANUAL_KEY) then scope:clear_variable(site.slot_key) end
+                    if not scope:variable(MANUAL_KEY)
+                        and event_status(scope, site) ~= STATUS_FINISHING then
+                        scope:clear_variable(site.slot_key)
+                    end
                     site.handler.abort(context, scope, site)
                     finish_site(scope, zone, site, cooldown_ticks, respawn_ticks)
                 end
@@ -773,13 +783,13 @@ function freeroam.new(definition)
                 local scope = lib.scope(context, state, departed.tag)
                 scope:clear_variable(CLEANUP_WAIT_KEY)
                 if departed.event_location then
-                    scope:clear_variable("event_region")
-                    scope:clear_variable("event_current")
-                    scope:clear_variable("event_status")
-                    scope:clear_variable("event_rally_end")
+                    scope:clear_variable(EVENT_REGION_KEY)
+                    scope:clear_variable(EVENT_CURRENT_KEY)
+                    scope:clear_variable(EVENT_STATUS_KEY)
+                    scope:clear_variable(EVENT_RALLY_END_KEY)
                     local request = context.public_event_request
                     if request and request.region == departed.region then
-                        scope:set_variable("event_request_seen", request.serial)
+                        scope:set_variable(EVENT_REQUEST_SEEN_KEY, request.serial)
                     end
                 end
             end

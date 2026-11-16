@@ -25,9 +25,9 @@ local HEROIC_WAVES = {"HEROIC_MELEE_SQUAD", "HEROIC_HEAVY_SQUAD", "HEROIC_FODDER
 local THRESHER_COUNT = 3
 -- Last named point of the downward and of the upward curve, at both placements.
 local DESCENT_LAST_POINT, ASCENT_LAST_POINT = 5, 6
--- The flight abilities every vehicle pilot holds, as the Skiffs of the Ginger adventure use them:
--- an entrance that stops at its command point, and a departure.
-local FLIGHT_GROUP, FLIGHT_ENTER, FLIGHT_EXIT = "GROUP_07EBF354", "KEY_052C60A0", "KEY_7D0D39A9"
+-- The flight ability group every vehicle pilot holds and its entrance, which stops at its
+-- command point; the Skiffs of the Ginger adventure use the same.
+local FLIGHT_GROUP, FLIGHT_ENTER = "GROUP_07EBF354", "KEY_052C60A0"
 -- The first authored barrage group lands six artillery objects inside the artillery area.
 local BARRAGE, BARRAGE_SIZE = 0, 6
 -- Rows of the directive sensor by title and name hash.
@@ -89,7 +89,6 @@ function site.bind(mission, placement)
         threshers[index] = unit("MOSQUITO0" .. index .. "_SQUAD", {})
         threshers[index].pilot = slot(pilot)
         threshers[index].enter = lib.one(flight[FLIGHT_ENTER], "thresher entrance " .. index)
-        threshers[index].exit = lib.one(flight[FLIGHT_EXIT], "thresher departure " .. index)
     end
     local artillery = {slot("ARTILLERY_AREA_OBJECT")}
     for index = 0, BARRAGE_SIZE - 1 do
@@ -126,18 +125,14 @@ function site.bind(mission, placement)
         waves = waves,
         heroic_waves = heroic_waves,
         threshers = threshers,
-        -- Authored flight of the Thresher, read from the placements' own points: the entrance is
-        -- one point some 125 m above the site and 160 m from it, where the downward curve starts.
-        -- That curve names six points: the second is still 116 m above the site, the last is at
-        -- the site's height 55 m from the drill. The upward curve names seven, from 43 m above
-        -- the site across the drill back up to the entrance's height, so the two curves close a
-        -- circuit of about 1.4 km. The exit is one point under the map.
+        -- Authored flight of the Thresher: one entrance point high above the site, a downward
+        -- curve of six named points to the drill and an upward curve of seven back to the
+        -- entrance's height. The two curves close a circuit of about 1.4 km.
         thresher_entrance = slot("MOSQUITO_ENTRANCE_PATH"),
         thresher_lap = {
             {curve = slot("MOSQUITO_DOWNWARDS_PATH"), first = 1, last = DESCENT_LAST_POINT},
             {curve = slot("MOSQUITO_UPWARDS_PATH"), first = 0, last = ASCENT_LAST_POINT},
         },
-        thresher_exit = slot("MOSQUITO_EXIT_PATH"),
         artillery = artillery,
         sniper = unit("PSION_SNIPER_SQUAD", sniper_pod, nil, task("SNIPER_OBJECTIVE")),
         valus = unit("ULTRA_BOSS_SQUAD", ultra_pod, nil, heroic_task),

@@ -105,7 +105,8 @@ function transports.new(ev, prime, site)
         if previous ~= nil and previous ~= generation then return end
         if report.removal_flag then scope:set_variable(c.WITHDRAWN, true) end
         if report.previous_alive_count > 0 then scope:set_variable(fall_key, generation) end
-        if scope:variable(fall_key) ~= generation or not squads.counted_out(context, unit, report) then
+        if scope:variable(fall_key) ~= generation
+            or not squads.counted_out(context, unit, report) then
             return
         end
         scope:clear_variable(c.TRANSPORT_KEY .. index)
@@ -113,8 +114,8 @@ function transports.new(ev, prime, site)
             if scope:variable(c.TRANSPORT_KEY .. member) ~= nil then return end
         end
         -- The cohort checks the current placements. Squad Sense does not identify the killer.
-        local heroic = stage == TRIO and not scope:variable(c.WITHDRAWN) and within_trio_window(scope)
-            and context:cohort{squads = trio_squads}.cleared
+        local heroic = stage == TRIO and not scope:variable(c.WITHDRAWN)
+            and within_trio_window(scope) and context:cohort{squads = trio_squads}.cleared
         close_wave(context, scope, stage)
         if heroic then ev:commit_heroic(context, scope) end
     end

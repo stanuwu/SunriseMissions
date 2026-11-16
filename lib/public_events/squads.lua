@@ -90,7 +90,7 @@ end
 
 --- Sends one placed actor along an authored path; the request is not tracked. The runtime
 --- raises an error for a path with no destination point. A flight only moves an actor that
---- already stands, so the refusal must not stop the event: it is caught and reported.
+--- already stands, so the refusal must not stop the event: it is caught and returned.
 ---@return boolean sent False when the runtime refused the path; the actor stays where it is.
 function squads.follow_path(context, actor, path)
     return (pcall(function()
@@ -105,7 +105,7 @@ end
 
 --- Sends one actor the Host holds through the named points of authored curves, in order, along
 --- each curve. play_actor_path always targets point 1; a curve with more points needs its points
---- named. A refused program leaves the actor where it is and is reported, as with a path.
+--- named. A refused program leaves the actor where it is and is returned, as with a path.
 ---@param legs FlightLeg[]
 ---@return boolean sent False when the runtime refused a point or the program.
 function squads.fly_points(context, actor, legs)

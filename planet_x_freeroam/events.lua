@@ -68,10 +68,9 @@ function events.spires(mission)
     return sites
 end
 
--- Glimmer Extraction placements of Nessus. Each names its object and root prefab, the unnamed
--- volumes beside it, the rally prefab at its first drill site and its schedule entry. The
--- Tangle authors two; the first has five drill sites, and an audience holds eight volumes, so
--- it names only the drills' 64 m engagement volumes.
+-- Glimmer Extraction placements of Nessus: object and root prefab, the unnamed volumes beside
+-- it, the rally prefab at its first drill site and its schedule entry. The first Tangle
+-- placement has five drill sites, so it names only the drills' 64 m engagement volumes.
 local EXTRACTIONS = {
     {region = 88, tag = "80C083E2", root = "FALLEN_MULTIPOINT_CORE",
         volumes = {"SLOT_0158", "SLOT_0176", "SLOT_018F", "SLOT_0196"}, rally = "80C080D1",

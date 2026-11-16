@@ -67,7 +67,8 @@ function site.bind(mission, placement)
             disruptors[index] = unit(prefix .. "SQ_BARRIER_CHALLENGER" .. index)
         end
         local goblins = ids.prefab(prefix .. "SQ_GOBLINS")
-        local sacrifice = lib.one(mission.ActorTemperament[goblins], "vexblock temperaments " .. goblins)
+        local sacrifice = lib.one(mission.ActorTemperament[goblins],
+            "vexblock temperaments " .. goblins)
         barrier_props[#barrier_props + 1] = slot(prefix .. "BARRIER_O_BLOCK_BARRIER")
         conflux_props[#conflux_props + 1] = slot(prefix .. "BARRIER_O_CONFLUX")
         plates[#plates + 1] = slot(prefix .. "BARRIER_O_BARRIER_CAPTURABLE")

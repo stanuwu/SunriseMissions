@@ -10,6 +10,8 @@ local site = {}
 -- Extraction crews move through three drill sites in order. Reconstructed: a placement that
 -- authors more than three uses its first three.
 local SITE_COUNT = 3
+-- An audience sensor holds at most eight volumes (host capacity).
+local AUDIENCE_VOLUME_LIMIT = 8
 -- Authored heroic waves in escalating order; the finale boss comes with the last wave.
 local HEROIC_WAVES = {"SQ_HEROIC_INITIAL_LIGHT_WAVE", "SQ_HEROIC_STEALTH_MELEE_WAVE",
     "SQ_HEROIC_HEAVY_WAVE", "SQ_HEROIC_FINALE_WAVE", "SQ_HEROIC_FINALE_BOSS"}
@@ -75,6 +77,7 @@ function site.bind(mission, placement)
         if engagement ~= nil then volumes[#volumes + 1] = Slot[engagement] end
     end
     for _, stem in ipairs(placement.volumes) do volumes[#volumes + 1] = zone_slot(stem) end
+    assert(#volumes <= AUDIENCE_VOLUME_LIMIT, "glimmer audience volumes at " .. placement.tag)
     local final = "PF_PLACEMENT_" .. (SITE_COUNT - 1) .. "_"
     local heroic_rule = slot(final .. "PF_FALLEN_DRILL_SR_DRILL_HEROIC")
     local heroic_waves = {}

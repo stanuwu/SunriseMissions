@@ -82,7 +82,7 @@ function module.new(definition)
             for index = 1, #definition.pod_groups do
                 scope:clear_variable(c.POD_GROUP_KEY .. index)
             end
-            scope:clear_variable(c.THRESHER_LAP_KEY)
+            scope:clear_variable(c.THRESHER_FLYING_KEY)
         end
 
         --- Returns the live wave index that this death report names, or nil.
@@ -131,30 +131,28 @@ function module.new(definition)
             return true
         end
 
-        --- Flies the first Thresher as its points are authored. The spawning program's entrance
-        --- ability takes it from its staging anchor under the map to the entrance point high
-        --- above the site. From there it flies laps through every named point of its two curves,
-        --- down to the drill and up again, until it is shot down or the event stops.
+        --- Flies the first Thresher as its points are authored: the spawning program's entrance
+        --- ability brings it from its staging anchor to the entrance point, then it flies laps
+        --- through every named point of its two curves until it is shot down or the event stops.
         local function fly_thresher(context, scope)
             if scope:variable(THRESHER_FAILED_KEY .. 1) == true then return end
             local thresher = threshers[1]
-            local lap = scope:variable(c.THRESHER_LAP_KEY)
-            if lap == nil then
+            if scope:variable(c.THRESHER_FLYING_KEY) == nil then
                 local request = context:slot(thresher.pilot):run_atoms{spawn = true, atoms = {
                     {kind = context.sdk.atom_kinds.ability, ability = thresher.enter,
                         target = context:slot(definition.thresher_entrance)},
                 }}
                 scope:set_variable(c.THRESHER_KEY .. 1, request.value)
-                scope:set_variable(c.THRESHER_LAP_KEY, 1)
+                scope:set_variable(c.THRESHER_FLYING_KEY, true)
                 scope:start_timer(c.THRESHER_TIMER, c.THRESHER_ENTRANCE_MS)
                 return
             end
-            if scope:variable(c.THRESHER_KEY .. 1) == nil then
-                scope:clear_variable(c.THRESHER_LAP_KEY)
+            -- A Thresher that was shot down or refuses its lap is sent no further one.
+            if scope:variable(c.THRESHER_KEY .. 1) == nil
+                or not squads.fly_points(context, thresher.pilot, definition.thresher_lap) then
+                scope:clear_variable(c.THRESHER_FLYING_KEY)
                 return
             end
-            squads.fly_points(context, thresher.pilot, definition.thresher_lap)
-            scope:set_variable(c.THRESHER_LAP_KEY, lap + 1)
             scope:start_timer(c.THRESHER_TIMER, c.THRESHER_LAP_MS)
         end
 
@@ -194,7 +192,7 @@ function module.new(definition)
                 if squads.owns_request(scope, c.THRESHER_KEY .. index, report.request_key) then
                     scope:set_variable(THRESHER_FAILED_KEY .. index, true)
                     scope:cancel_timer(c.THRESHER_TIMER)
-                    scope:clear_variable(c.THRESHER_LAP_KEY)
+                    scope:clear_variable(c.THRESHER_FLYING_KEY)
                     return
                 end
             end
@@ -221,7 +219,7 @@ function module.new(definition)
             scope:set_variable(c.OCCUPANTS_KEY, 0)
             scope:set_variable(c.WAVE_COUNT_KEY, 0)
             scope:clear_variable(c.CAPTURED_KEY)
-            scope:clear_variable(c.THRESHER_LAP_KEY)
+            scope:clear_variable(c.THRESHER_FLYING_KEY)
             scope:clear_variable(c.ENDED_VALUS_KEY)
             for index = 1, #threshers do
                 scope:clear_variable(THRESHER_FAILED_KEY .. index)
@@ -332,7 +330,7 @@ function module.new(definition)
             if name == c.INTRO_TIMER then
                 visuals.finish_intro(context)
             elseif name == c.BOMBARD_TIMER then
-                visuals.bombard(context, scope)
+                visuals.bombard(context)
             elseif name == c.WAVE_TIMER then
                 send_wave(context, scope)
                 scope:start_timer(c.WAVE_TIMER, c.WAVE_INTERVAL_MS)

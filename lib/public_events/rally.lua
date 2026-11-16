@@ -19,14 +19,12 @@ local MS_PER_SECOND = 1000
 local COUNTDOWN_SECONDS = 60
 -- The completed countdown lingers for one second before the flag leaves.
 local LINGER_MS = 1000
--- The flag's authored sound owns repetition and pitch; the device position selects them. In the
--- 16 November recording both change in steps five seconds apart, counted back from the moment
--- the flag leaves, and the two pitch steps (130 and 126 cents) are what the authored pitch curve
--- gives for one step of 5 s in 300 s. The position is therefore the elapsed share of a
--- five-minute countdown, moved every five seconds.
+-- The flag's authored sound owns repetition and pitch; the device position selects them.
+-- Reconstructed: the position is the elapsed share of a 300 s countdown, moved in 5 s stages
+-- counted back from the moment the flag leaves.
 local AUTHORED_SECONDS, STAGE_SECONDS = 300, 5
--- A shorter countdown plays the last three stages as authored and spreads the earlier part of
--- the authored range over the time before them (reconstruction policy).
+-- Reconstructed policy: a shorter countdown plays the last three stages unchanged and spreads
+-- the earlier part of the range over the time before them.
 local FINAL_SECONDS = 15
 -- Interval armed on the tone timer to read the host time back from its deadline.
 local CLOCK_READ_MS = 1000
@@ -34,9 +32,9 @@ local CLOCK_READ_MS = 1000
 local STAGE_MARGIN_MS = 50
 -- Lowest position inside the tone's range.
 local AUDIO_MIN_POSITION = 0.01
--- The authored ending past the tone's range: the recording has one long tone here while the
--- flag folds away, about a second long.
+-- Past the tone's range the flag plays its authored ending: one long tone as it folds away.
 local AUDIO_END_POSITION = 1
+-- Reconstructed time the ending needs before the flag object is taken away.
 local FOLD_MS = 1500
 -- Flag incidents identify no player; retain a distinct non-player marker.
 local INCIDENT_OWNER = "incident"
@@ -256,7 +254,7 @@ function Rally:stop_audio(context, scope)
 end
 
 --- Sets the tone's stage for the time left until the flag leaves and arms the next stage. The
---- tone runs through the lingering second after zero, as in the recording.
+--- tone runs through the lingering second after zero.
 function Rally:update_audio(context, scope)
     local remaining = self:until_ms(scope, self.leave_timer)
     if remaining == nil or remaining <= 0 then
