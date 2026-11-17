@@ -38,9 +38,13 @@ function module.new(definition)
         devices.set_position(context, scope, ship.device, c.SHIP_KEY, c.SHIP_DEPARTURE, true)
     end
 
-    --- Fires the carrier's beam and creates the lander in its authored arrival state.
-    function visuals.land(context, scope)
+    --- Fires the carrier's beam at the landing spot.
+    function visuals.beam(context, scope)
         devices.set_position(context, scope, ship.device, c.SHIP_KEY, c.SHIP_DROP_BEAM, true)
+    end
+
+    --- Creates the lander in its authored arrival state.
+    function visuals.land(context, scope)
         local requests = context:activate_objects{slots = {lander.object}, active = true}
         scope:set_variable(c.LANDER_REQUEST_KEY, requests[1].value)
         scope:clear_variable(c.LANDER_KEY)

@@ -156,7 +156,7 @@ function module.new(definition)
             scope:start_timer(c.THRESHER_TIMER, c.THRESHER_LAP_MS)
         end
 
-        -- After the flag leaves: carrier with the event row, alert, lander.
+        -- After the flag leaves: carrier with the event row, alert, beam, lander.
         hooks.incoming = {
             {delay_ms = c.SHIP_AFTER_LEAVE_MS, run = function(context, scope)
                 visuals.fly_in(context, scope)
@@ -165,7 +165,8 @@ function module.new(definition)
             {delay_ms = c.ALERT_AFTER_SHIP_MS, run = function(context)
                 ev:say(context, c.CUE_ALERT)
             end},
-            {delay_ms = c.LAND_AFTER_ALERT_MS, run = visuals.land},
+            {delay_ms = c.BEAM_AFTER_ALERT_MS, run = visuals.beam},
+            {delay_ms = c.LAND_AFTER_BEAM_MS, run = visuals.land},
         }
         hooks.start_delay_ms = c.START_AFTER_LAND_MS
         hooks.timers = {c.INTRO_TIMER, c.WAVE_TIMER, c.THRESHER_TIMER, c.BOMBARD_TIMER}

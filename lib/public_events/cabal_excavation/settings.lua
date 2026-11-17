@@ -21,10 +21,12 @@ c.CAPTURED_KEY = "c.cp"
 -- Family timers remain distinct from the shared lifecycle, incoming and rally timers.
 c.INTRO_TIMER, c.WAVE_TIMER, c.THRESHER_TIMER, c.BOMBARD_TIMER = "ci", "cw", "ct", "cb"
 
--- Reconstructed arrival cadence. Allow the lander to finish its 7.7-second thruster sequence
+-- Reconstructed arrival cadence. The carrier's beam marks the landing spot three seconds before
+-- the lander leaves the carrier. Allow the lander to finish its 7.7-second thruster sequence
 -- before starting the clock.
 c.SHIP_AFTER_LEAVE_MS, c.ALERT_AFTER_SHIP_MS = 4000, 9000
-c.LAND_AFTER_ALERT_MS, c.START_AFTER_LAND_MS = 11000, 10000
+c.BEAM_AFTER_ALERT_MS, c.LAND_AFTER_BEAM_MS = 8000, 3000
+c.START_AFTER_LAND_MS = 10000
 
 -- Lander graph: arrival is the default, 0.05 mines, 0.10 withdraws and 0.20 destroys it.
 c.LANDER_MINING, c.LANDER_WITHDRAWAL, c.LANDER_DESTRUCTION = 0.05, 0.10, 0.20
