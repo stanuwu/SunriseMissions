@@ -28,15 +28,19 @@ function module.new(definition)
         context:slot(intro):play_sequence{}
     end
 
-    --- Runs the carrier's effect pass and lands the first authored barrage.
-    function visuals.bombard(context, scope)
-        devices.set_position(context, scope, ship.device, c.SHIP_KEY, c.SHIP_BOMBARDMENT, true)
+    --- Lands the first authored barrage.
+    function visuals.bombard(context)
         context:activate_objects{slots = artillery, active = true}
     end
 
     --- Sends the carrier away at the ending.
     function visuals.fly_out(context, scope)
         devices.set_position(context, scope, ship.device, c.SHIP_KEY, c.SHIP_DEPARTURE, true)
+    end
+
+    --- Fires the carrier's beam at the landing spot.
+    function visuals.beam(context, scope)
+        devices.set_position(context, scope, ship.device, c.SHIP_KEY, c.SHIP_DROP_BEAM, true)
     end
 
     --- Creates the lander in its authored arrival state.

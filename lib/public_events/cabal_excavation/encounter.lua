@@ -69,7 +69,11 @@ function module.new(definition)
             end
             squads.retire_if_placed(context, scope, sniper, c.SNIPER_KEY)
             squads.retire_if_placed(context, scope, valus, c.VALUS_KEY)
+            -- A Thresher is an actor its program spawned: the actor is retired, then its squad.
             for index, thresher in ipairs(threshers) do
+                if scope:variable(c.THRESHER_KEY .. index) ~= nil then
+                    context:slot(thresher.pilot):retire_actor()
+                end
                 squads.retire_if_placed(context, scope, thresher, c.THRESHER_KEY .. index)
             end
             for index, guard in ipairs(heroic_waves) do
@@ -78,7 +82,7 @@ function module.new(definition)
             for index = 1, #definition.pod_groups do
                 scope:clear_variable(c.POD_GROUP_KEY .. index)
             end
-            scope:clear_variable(c.THRESHER_PATH_KEY)
+            scope:clear_variable(c.THRESHER_FLYING_KEY)
         end
 
         --- Returns the live wave index that this death report names, or nil.
@@ -127,20 +131,32 @@ function module.new(definition)
             return true
         end
 
-        --- Places the first Thresher, then sends its pilot along the entrance path.
+        --- Flies the first Thresher as its points are authored: the spawning program's entrance
+        --- ability brings it from its staging anchor to the entrance point, then it flies laps
+        --- through every named point of its two curves until it is shot down or the event stops.
         local function fly_thresher(context, scope)
             if scope:variable(THRESHER_FAILED_KEY .. 1) == true then return end
-            if scope:variable(c.THRESHER_PATH_KEY) == true then
-                scope:clear_variable(c.THRESHER_PATH_KEY)
-                squads.follow_path(context, threshers[1].pilot, definition.thresher_path)
+            local thresher = threshers[1]
+            if scope:variable(c.THRESHER_FLYING_KEY) == nil then
+                local request = context:slot(thresher.pilot):run_atoms{spawn = true, atoms = {
+                    {kind = context.sdk.atom_kinds.ability, ability = thresher.enter,
+                        target = context:slot(definition.thresher_entrance)},
+                }}
+                scope:set_variable(c.THRESHER_KEY .. 1, request.value)
+                scope:set_variable(c.THRESHER_FLYING_KEY, true)
+                scope:start_timer(c.THRESHER_TIMER, c.THRESHER_ENTRANCE_MS)
                 return
             end
-            place(context, scope, threshers[1], c.THRESHER_KEY .. 1)
-            scope:set_variable(c.THRESHER_PATH_KEY, true)
-            scope:start_timer(c.THRESHER_TIMER, c.THRESHER_PATH_MS)
+            -- A Thresher that was shot down or refuses its lap is sent no further one.
+            if scope:variable(c.THRESHER_KEY .. 1) == nil
+                or not squads.fly_points(context, thresher.pilot, definition.thresher_lap) then
+                scope:clear_variable(c.THRESHER_FLYING_KEY)
+                return
+            end
+            scope:start_timer(c.THRESHER_TIMER, c.THRESHER_LAP_MS)
         end
 
-        -- After the flag leaves: carrier with the event row, alert, lander.
+        -- After the flag leaves: carrier with the event row, alert, beam, lander.
         hooks.incoming = {
             {delay_ms = c.SHIP_AFTER_LEAVE_MS, run = function(context, scope)
                 visuals.fly_in(context, scope)
@@ -149,7 +165,8 @@ function module.new(definition)
             {delay_ms = c.ALERT_AFTER_SHIP_MS, run = function(context)
                 ev:say(context, c.CUE_ALERT)
             end},
-            {delay_ms = c.LAND_AFTER_ALERT_MS, run = visuals.land},
+            {delay_ms = c.BEAM_AFTER_ALERT_MS, run = visuals.beam},
+            {delay_ms = c.LAND_AFTER_BEAM_MS, run = visuals.land},
         }
         hooks.start_delay_ms = c.START_AFTER_LAND_MS
         hooks.timers = {c.INTRO_TIMER, c.WAVE_TIMER, c.THRESHER_TIMER, c.BOMBARD_TIMER}
@@ -176,7 +193,7 @@ function module.new(definition)
                 if squads.owns_request(scope, c.THRESHER_KEY .. index, report.request_key) then
                     scope:set_variable(THRESHER_FAILED_KEY .. index, true)
                     scope:cancel_timer(c.THRESHER_TIMER)
-                    scope:clear_variable(c.THRESHER_PATH_KEY)
+                    scope:clear_variable(c.THRESHER_FLYING_KEY)
                     return
                 end
             end
@@ -203,7 +220,7 @@ function module.new(definition)
             scope:set_variable(c.OCCUPANTS_KEY, 0)
             scope:set_variable(c.WAVE_COUNT_KEY, 0)
             scope:clear_variable(c.CAPTURED_KEY)
-            scope:clear_variable(c.THRESHER_PATH_KEY)
+            scope:clear_variable(c.THRESHER_FLYING_KEY)
             scope:clear_variable(c.ENDED_VALUS_KEY)
             for index = 1, #threshers do
                 scope:clear_variable(THRESHER_FAILED_KEY .. index)
@@ -238,7 +255,9 @@ function module.new(definition)
         hooks.on_stop = retire_squads
 
         --- A heroic win destroys the lander, any other ending withdraws it; the carrier departs.
+        --- The override footprint and its ring leave with the objective, not with the chest.
         function hooks.on_finish(context, scope, succeeded)
+            context:activate_objects{slots = {zone, definition.ring}, active = false}
             if succeeded and ev:heroic(scope) then
                 visuals.destroy_lander(context, scope)
             else
@@ -312,7 +331,7 @@ function module.new(definition)
             if name == c.INTRO_TIMER then
                 visuals.finish_intro(context)
             elseif name == c.BOMBARD_TIMER then
-                visuals.bombard(context, scope)
+                visuals.bombard(context)
             elseif name == c.WAVE_TIMER then
                 send_wave(context, scope)
                 scope:start_timer(c.WAVE_TIMER, c.WAVE_INTERVAL_MS)

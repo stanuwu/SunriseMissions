@@ -14,7 +14,8 @@ local RIG_SITE_REGION = 8
 local zones = public_events.attach(content(mission, freeroam), RIG_SITE_REGION,
     mission.Slot.M_PUBLIC_EVENT_SENSOR_80F6B2FD, events.injection_rig(mission), true)
 
-local program = freeroam.new{zones = zones, sectors = sectors(mission, freeroam)}
+local program = freeroam.new{zones = zones, sectors = sectors(mission, freeroam),
+    event_locations = {[RIG_SITE_REGION] = "Mars / Braytech Futurescape"}}
 
 -- These objective groups have no encounter owner yet; do not spawn them as ordinary patrol.
 local conditional_squads = {

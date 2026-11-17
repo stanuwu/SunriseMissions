@@ -1,5 +1,6 @@
 -- Taken Blight encounter settings.
 local c = {}
+c.NAME = "Taken Blight"
 
 -- Retained keys preserve a running attempt across script reloads; "tb" is the event prefix.
 c.KEY = "tb"

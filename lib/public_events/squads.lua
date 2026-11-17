@@ -23,9 +23,11 @@ end
 --- Replaces a unit and retains its placement and optional objective request separately.
 ---@param unit Unit
 ---@param key string Placement key within the event scope.
+---@param temperaments table[]|nil The squad's new temperament list; nil keeps its last list.
 ---@return userdata request Placement request; staging does not confirm client execution.
-function squads.place(context, scope, unit, key)
-    local request, assignment = lib.place_unit(context, unit, context.sdk.squad_modes.replace)
+function squads.place(context, scope, unit, key, temperaments)
+    local request, assignment =
+        lib.place_unit(context, unit, context.sdk.squad_modes.replace, temperaments)
     scope:set_variable(key, request.value)
     if assignment ~= nil then
         scope:set_variable(key .. OBJECTIVE_SUFFIX, assignment.value)
@@ -86,9 +88,38 @@ function squads.drop(context, scope, unit, standing_prefix)
     scope:set_variable(key, true)
 end
 
---- Sends one placed actor along an authored path; the request is not tracked.
+--- Sends one placed actor along an authored path; the request is not tracked. The runtime
+--- raises an error for a path with no destination point. A flight only moves an actor that
+--- already stands, so the refusal must not stop the event: it is caught and returned.
+---@return boolean sent False when the runtime refused the path; the actor stays where it is.
 function squads.follow_path(context, actor, path)
-    context:slot(actor):play_actor_path{path = context:slot(path)}
+    return (pcall(function()
+        context:slot(actor):play_actor_path{path = context:slot(path)}
+    end))
+end
+
+---@class FlightLeg
+---@field curve string Slot id of an authored curve.
+---@field first integer First named point of the curve to fly to.
+---@field last integer Last named point of the curve to fly to.
+
+--- Sends one actor the Host holds through the named points of authored curves, in order, along
+--- each curve. play_actor_path always targets point 1; a curve with more points needs its points
+--- named. A refused program leaves the actor where it is and is returned, as with a path.
+---@param legs FlightLeg[]
+---@return boolean sent False when the runtime refused a point or the program.
+function squads.fly_points(context, actor, legs)
+    return (pcall(function()
+        local atoms = {}
+        for _, leg in ipairs(legs) do
+            local target = context:slot(leg.curve)
+            for point = leg.first, leg.last do
+                atoms[#atoms + 1] = {kind = context.sdk.atom_kinds.move_to, target = target,
+                    value = point, enabled = true}
+            end
+        end
+        context:slot(actor):run_atoms{atoms = atoms}
+    end))
 end
 
 return squads

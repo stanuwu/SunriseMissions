@@ -16,6 +16,8 @@ local TIMER_BANNER, TIMER_CHEST, TIMER_GRACE, TIMER_PRELUDE = 2, 3, 4, 5
 local END_BANNER_MS, END_CHEST_MS = 3000, 2000
 -- Reconstructed retention of the chest and scenery after the ending.
 local GRACE_MS = 60000
+-- Reconstructed: a canceled objective's row is given the banner's time to leave the HUD.
+local CANCEL_GRACE_MS = END_BANNER_MS
 -- Incoming step 0 withdraws the rally flag; family steps follow from 1.
 local STEP_LEAVE = 0
 -- Chest ownership is recorded as this tier; inventory rewards need a separate contract.
@@ -248,6 +250,7 @@ end
 ---@param arrival EventArrival|nil
 function Event:start(context, scope, arrival)
     self.final_cleanup:reset(scope)
+    scope:clear_variable(self.cancel_key)
     scope:clear_variable(self.director_key)
     scope:clear_variable(self.director_normal_key)
     devices.reset(scope, self.hooks.device_keys)
@@ -286,13 +289,13 @@ function Event:rally_open(scope)
         and scope:variable(self.stage_key) == STEP_LEAVE
 end
 
---- Commits heroic once: family reinforcements, heroic music, a restarted clock, the sensor
---- and the heroic row, in the order the Spire heroic banner ran with.
+--- Commits heroic with reinforcements, music, the event sensor and the heroic row.
+---@param seconds integer|nil New duration in seconds; omit to keep the running deadline.
 function Event:commit_heroic(context, scope, seconds)
     scope:set_variable(self.heroic_key, true)
     if self.hooks.on_heroic ~= nil then self.hooks.on_heroic(context, scope) end
     self:music(context, self.settings.MUSIC_HEROIC)
-    self.lifecycle:restart_clock(scope, seconds)
+    if seconds ~= nil then self.lifecycle:restart_clock(scope, seconds) end
     if self.director:heroic(context) ~= nil then scope:set_variable(self.director_key, true) end
     self:goal(context, scope, presentation.directive.enter)
 end
@@ -345,11 +348,26 @@ function Event:abort(context, scope)
     local flag_standing = self:rally_open(scope)
     self.lifecycle:enter(scope, runtime.phase.aborted)
     self:stop(context, scope, live)
-    if flag_standing then self.rally:leave(context, scope) end
+    if flag_standing then self.rally:withdraw(context, scope) end
     if self.rally ~= nil then self.rally:close(context, scope) end
     self:cleanup(context, scope)
     self.lifecycle:release(scope)
     return true
+end
+
+--- Ends an attempt on request. A live objective takes a short ending: combat stops, its row
+--- plays the exit state the HUD removes it by, and the grace timer runs the final cleanup. A
+--- hidden sensor alone leaves a member's row standing. Any other phase aborts at once.
+---@return boolean released False while the short ending runs; its timer releases the site.
+function Event:cancel(context, scope)
+    if scope:variable(self.cancel_key) == true then return false end
+    if not self:active(scope) then return self:abort(context, scope) end
+    scope:set_variable(self.cancel_key, true)
+    self.lifecycle:enter(scope, runtime.phase.ending)
+    self:stop(context, scope, true)
+    self:goal(context, scope, presentation.directive.exit)
+    self.lifecycle:wait(scope, TIMER_GRACE, CANCEL_GRACE_MS)
+    return false
 end
 
 --- Advances prelude, banner and chest, then releases the site after the grace period.
@@ -374,6 +392,17 @@ end
 --- Builds the freeroam callbacks; family reports are forwarded while the objective is live.
 function Event:handler()
     local handler = {}
+
+    --- Returns the host stage and, during rally, the flag's stop time in host milliseconds.
+    function handler.status(scope)
+        if self:rally_open(scope) then
+            return "Rally", tonumber(scope.state:timer(scope:key(self.rally.stop_timer)))
+        end
+        local phase = self.lifecycle:phase(scope)
+        if phase == runtime.phase.active then return "Active" end
+        if phase == runtime.phase.ending then return "Finishing" end
+        if phase == runtime.phase.incoming then return "Incoming" end
+    end
 
     --- Waits for cleanup within the held-zone bound, retaining unsuccessful cleanup as a warning.
     function handler.cleanup_pending(scope, held_ticks)
@@ -489,6 +518,11 @@ function Event:handler()
         return self:abort(context, scope)
     end
 
+    --- Ends the attempt on the launcher's request; false while a live objective's ending runs.
+    function handler.cancel(context, scope)
+        return self:cancel(context, scope)
+    end
+
     function handler.on_ending_timer(context, scope, purpose)
         return self:on_ending_timer(context, scope, purpose)
     end
@@ -503,7 +537,7 @@ end
 ---@return table handler Retains definitions and hooks, never mutable gameplay state.
 function event.new(definition, settings, build)
     local key = settings.KEY
-    return runtime.new({key = key, duration_seconds = settings.EVENT_SECONDS,
+    return runtime.new({name = settings.NAME, key = key, duration_seconds = settings.EVENT_SECONDS,
         tick_seconds = settings.TICK_SECONDS}, function(lifecycle)
         local self = setmetatable({
             definition = definition,
@@ -517,6 +551,7 @@ function event.new(definition, settings, build)
             arrived_key = key .. ".av",
             heroic_key = key .. ".h",
             reward_key = key .. ".rw",
+            cancel_key = key .. ".cn",
             -- Records queued sensor ownership, not confirmed client state.
             director_key = key .. ".ds",
             director_normal_key = key .. ".dn",
@@ -537,12 +572,13 @@ function event.new(definition, settings, build)
                 return context:activate_objects{slots = slots, active = false}
             end},
             {retry = true, send = hooks.on_cleanup},
-            {retry = true, send = function(context)
-                return {context:slot(definition.directive_sensor):clear_directives()}
-            end},
             {retry = true, send = function(context) return {self:music(context, nil)} end},
+            -- Members are released before the sensor is hidden, so no member holds a hidden row.
             {retry = true, send = function(context, scope)
                 return {self:audience(context, scope, false)}
+            end},
+            {retry = true, send = function(context)
+                return {context:slot(definition.directive_sensor):clear_directives()}
             end},
             -- Record a rejected close once. Retrying it could close a later attempt.
             {retry = false, blocking = false, send = function(context, scope)

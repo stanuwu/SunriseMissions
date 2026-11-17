@@ -1,29 +1,37 @@
 -- Binds one authored Spire prefab. Sites share its layout and differ in generated names.
 local lib = require("lib.mission_lib")
 local rally = require("lib.public_events.rally")
+local site_names = require("lib.public_events.site_names")
+local c = require("lib.public_events.spire_integration.settings")
 
 local site = {}
 
 -- The prefab has three lanes, each with three capture-challenger squads.
 local LANE_COUNT, CHALLENGERS_PER_LANE = 3, 3
--- Five outer covers accompany cover zero inside the prefab.
-local OUTER_COVER_COUNT = 5
+-- Rows of the directive sensor by title and name hash: incoming, objective, heroic objective.
+local INCOMING_ROW = {"SPIRE_INTEGRATION", 0x0C12E05C}
+local OBJECTIVE_ROW = {"DISRUPT_VEX_CONSTRUCTION", 0x68E99712}
+local HEROIC_ROW = {"HOLD_OFF_ELITE_VEX", 0xCF07C635}
 
----@class SpireSiteNames
----@field prefab fun(stem: string): string Generated name of a slot inside the prefab.
----@field zone fun(stem: string): string Generated name of a sensor beside the prefab.
----@field cover fun(index: integer): string Generated name of one outer cover.
----@field area string[] Zone stems of the joining volumes; the first is the event centre.
----@field navpoint string Generated name of the passive marker slot.
----@field rally_key string Generated suffix of the rally prefab paired with this site.
----@field rally_volume string|nil Exact volume key for a prefab with an exceptional stem.
+---@class SpirePlacement
+---@field tag string Object tag of the placement.
+---@field root string Root prefab stem in key form; placements name it differently.
+---@field area string[] Stems of the joining volumes; the first is the event centre.
+---@field navpoint string|nil Prefab stem of the marker of a placement with no location point.
+---@field rally string Object tag of the rally prefab paired with this site.
+---@field rally_volume string|nil Stem of the rally's volume when the site names its own.
 
---- Resolves a site's authored content into the Spire event definition.
+--- Resolves a placement's authored content into the Spire event definition.
 ---@param mission table Generated mission module.
----@param ids SpireSiteNames
+---@param placement SpirePlacement
 ---@return table definition Input of the Spire encounter.
-function site.bind(mission, ids)
+function site.bind(mission, placement)
     local Slot, Squad = mission.Slot, mission.Squad
+    local object = site_names.object(mission, placement.tag, placement.root)
+    local ids = {prefab = object.prefab, zone = object.zone, area = placement.area}
+    local function row(name, sensor)
+        return site_names.directive(mission, name[1], name[2], sensor)
+    end
     local function squad(stem)
         return lib.one(Squad[ids.prefab(stem)], "vexblock squad " .. stem)
     end
@@ -58,18 +66,24 @@ function site.bind(mission, ids)
         for index = 1, CHALLENGERS_PER_LANE do
             disruptors[index] = unit(prefix .. "SQ_BARRIER_CHALLENGER" .. index)
         end
+        local goblins = ids.prefab(prefix .. "SQ_GOBLINS")
+        local sacrifice = lib.one(mission.ActorTemperament[goblins],
+            "vexblock temperaments " .. goblins)
         barrier_props[#barrier_props + 1] = slot(prefix .. "BARRIER_O_BLOCK_BARRIER")
         conflux_props[#conflux_props + 1] = slot(prefix .. "BARRIER_O_CONFLUX")
         plates[#plates + 1] = slot(prefix .. "BARRIER_O_BARRIER_CAPTURABLE")
         for _, stem in ipairs({"BARRIER_PM_PROXIMITY", "BARRIER_PM_CONTROL_AREA"}) do
             monitors[#monitors + 1] = slot(prefix .. stem)
         end
-        local lane_area = Slot[ids.prefab(prefix .. "BARRIER_TV_ENGAGEMENT")]
-        if lane_area ~= nil then area[#area + 1] = lane_area end
+        local lane_area = object.find(prefix .. "BARRIER_TV_ENGAGEMENT")
+        if lane_area ~= nil then area[#area + 1] = Slot[lane_area] end
         lanes[lane + 1] = {
             waves = waves,
             disruptors = disruptors,
             objective = objective,
+            sacrifice = lib.one(
+                sacrifice[string.format("KEY_%08X", c.GOBLIN_SACRIFICE_TEMPERAMENT)],
+                "sacrifice temperament " .. goblins),
             barrier = barrier_props[#barrier_props],
             stream = slot(prefix .. "BARRIER_HO_VEX_BUG_STREAM"),
             stream_filter = slot(prefix .. "BARRIER_OF_VEX_BUG_STREAM"),
@@ -79,9 +93,10 @@ function site.bind(mission, ids)
             },
         }
     end
+    local directive_sensor = lib.one(Slot[ids.zone("M_DIRECTIVE_SENSOR")], "directive sensor")
     local heroic = {
         audio = slot("SEQ_VEX_BLOCK_HEROIC_START_AUDIO"),
-        directive = lib.one(mission.Directive.HOLD_OFF_ELITE_VEX_CF07C635, "heroic directive"),
+        directive = row(HEROIC_ROW, directive_sensor),
         clouds = {},
         scenes = {},
         guards = {},
@@ -96,26 +111,23 @@ function site.bind(mission, ids)
             lib.one(Slot[objective_name], "heroic objective " .. side),
             lib.one(mission.TaskGroup[objective_name], "heroic task group " .. side).GROUP_0)
     end
-    local cover = {slot("O_VEX_COV_0")}
-    for index = 1, OUTER_COVER_COUNT do
-        cover[#cover + 1] = lib.one(Slot[ids.cover(index)], "vex cover " .. index)
-    end
-    local directive = lib.one(mission.Directive.DISRUPT_VEX_CONSTRUCTION, "directive")
-    local incoming = lib.one(mission.Directive.SPIRE_INTEGRATION, "incoming directive")
-    assert(heroic.directive.slot_row == directive.slot_row,
-        "heroic directive belongs to another sensor: " .. heroic.directive.id)
-    assert(incoming.slot_row == directive.slot_row,
-        "incoming directive belongs to another sensor: " .. incoming.id)
+    -- Placements author different numbers of covers around the spire; Exodus Black has none.
+    local cover = {}
+    for index, key in ipairs(object.numbered("O_VEX_COV_")) do cover[index] = Slot[key] end
+    local directive = row(OBJECTIVE_ROW, directive_sensor)
+    local incoming = row(INCOMING_ROW, directive_sensor)
+    local navpoint = placement.navpoint ~= nil and ids.prefab(placement.navpoint)
+        or ids.zone("LOCATION_POINT")
     return {
         -- Shared event definition.
-        directive_sensor = lib.one(Slot[ids.zone("M_DIRECTIVE_SENSOR")], "directive sensor"),
+        directive_sensor = directive_sensor,
         engagement = lib.one(Slot[ids.zone("M_ENGAGEMENT_SENSOR")], "engagement sensor"),
         engagement_volumes = area,
         -- Each site's sensor holds its own lines under the shared cue order.
         dialog = lib.one(Slot[ids.zone("M_DIALOG_SENSOR")], "dialog sensor"),
         music = lib.one(Slot[ids.zone("M_MUSIC_SENSOR")], "music sensor"),
         chest = slot("PF_REWARD_CHEST_TIER0_OBJECT"),
-        rally = rally.bind(mission, ids.rally_key, ids.rally_volume),
+        rally = rally.bind_object(mission, placement.rally, placement.rally_volume),
         event_sensor = lib.one(Slot[ids.zone("M_PUBLIC_EVENT_SENSOR")], "public event sensor"),
         event_area = area[1],
         -- Spire mechanics and scenery.
@@ -132,7 +144,7 @@ function site.bind(mission, ids)
         stream_target = slot("PF_VEXBLOCK_O_VEX_BUG_STREAM_TARGET"),
         cover = cover,
         opening = unit("SQ_INITIAL_VEX"),
-        navpoint = lib.one(Slot[ids.navpoint], "location point"),
+        navpoint = lib.one(Slot[navpoint], "location point"),
         directive = directive,
         incoming = incoming,
     }

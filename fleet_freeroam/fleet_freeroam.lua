@@ -36,7 +36,8 @@ for _, zone in ipairs(zones) do
     if zone.region == RITUAL_SITE_REGION then zone.omit = RITUAL_SITE_SEED_OMIT end
 end
 
-local program = freeroam.new{zones = zones, sectors = sectors(mission, freeroam)}
+local program = freeroam.new{zones = zones, sectors = sectors(mission, freeroam),
+    event_locations = {[RITUAL_SITE_REGION] = "Titan / The Rig"}}
 -- A player who spawns straight into the Rig gets a seed adopted before the zone selects its
 -- state, so the host applies this list to every seed as well.
 program.seed_omit = RITUAL_SITE_SEED_OMIT

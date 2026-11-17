@@ -1,5 +1,6 @@
 -- Injection Rig encounter settings.
 local c = {}
+c.NAME = "Injection Rig"
 
 -- Retained keys preserve a running attempt across script reloads; "r" is the event prefix.
 c.KEY = "r"

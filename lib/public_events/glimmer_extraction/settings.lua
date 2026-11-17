@@ -1,5 +1,6 @@
 -- Glimmer Extraction encounter settings.
 local c = {}
+c.NAME = "Glimmer Extraction"
 
 -- Retained keys preserve a running attempt across script reloads; "g" is the event prefix.
 c.KEY = "g"
